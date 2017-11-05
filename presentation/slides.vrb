@@ -1,0 +1,6 @@
+\frametitle{Basic implementation strategy}
+
+  \begin{figure}
+    \includegraphics[scale=0.21]{figs/diff.png}
+  \caption{The complete contribution to already existing code}
+  \end{figure}

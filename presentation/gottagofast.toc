@@ -1,0 +1,4 @@
+\beamer@sectionintoc {1}{Main reasoning behind writing models in Futhark}{2}{0}{1}
+\beamer@sectionintoc {2}{Porting an OpenCL model to Futhark}{5}{0}{2}
+\beamer@sectionintoc {3}{Performance}{6}{0}{3}
+\beamer@sectionintoc {4}{Questions?}{11}{0}{4}

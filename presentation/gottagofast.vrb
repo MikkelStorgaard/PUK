@@ -1,0 +1,12 @@
+\frametitle{Why is Futhark faster?}
+\begin{itemize}
+  \item Independent (accumulating) for-loop iterations can easily* be rewritten as
+    as map/reduce operations.
+
+  \item The Futhark language uses a heavily optimizing compiler, that rewards
+    map/reduce patterns with major performance increases.
+
+  \item (In case of basic Python implemented models, it's trivial to make them go
+    faster.)
+  \end{itemize}
+  % vis billede af noget diff

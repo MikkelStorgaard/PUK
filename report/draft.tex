@@ -1,0 +1,75 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper, hmargin={2.8cm, 2.8cm}, vmargin={2.5cm, 2.5cm}]{geometry}
+\usepackage{eso-pic} % \AddToShipoutPicture
+\usepackage{graphicx} % \includegraphics
+
+%% Change `ku-farve` to `nat-farve` to use SCIENCE's old colors or
+%% `natbio-farve` to use SCIENCE's new colors and logo.
+\def \ColourPDF {include/ku-farve}
+
+%% Change `ku-en` to `nat-en` to use the `Faculty of Science` header
+\def \TitlePDF   {include/ku-en}  % University of Copenhagen
+
+\title{
+  \vspace{3cm}
+  \Huge{Optimizing SasView models} \\
+  \Large{Enhancing performance by rewriting kernels from OpenCL/OpenMP to Futhark}
+}
+
+\author{
+  \Large{Mikkel Storgaard Knudsen}
+  \\ \texttt{mikkelstorgaard@gmail.com} \\
+  \\
+  \Large{Supervisor}
+  \\ Martin Elsman
+  \\ \texttt{mael@di.ku.dk} \\
+}
+
+\date{
+    \today
+}
+
+\begin{document}
+
+
+\AddToShipoutPicture*{\put(0,0){\includegraphics*[viewport=0 0 700 600]{\ColourPDF}}}
+\AddToShipoutPicture*{\put(0,602){\includegraphics*[viewport=0 600 700 1600]{\ColourPDF}}}
+
+\AddToShipoutPicture*{\put(0,0){\includegraphics*{\TitlePDF}}}
+
+\clearpage\maketitle
+\thispagestyle{empty}
+
+\newpage
+
+%% Write your dissertation here.
+\section*{Goal and motivation}
+\textit{SasView} is a Small Angle Scattering (SAS) analysis package for the analysis of
+1D and 2D scattering data directly in inverse space.
+As \textit{SasView} is given data, it performs its analyses by running the input data
+through theory models provided by the standalone module \textit{Sasmodels}.
+\\
+\\
+The \textit{Sasmodels} models utilizes a set of kernels, which are implemented
+in both OpenCL and OpenMP.
+However, benchmark
+comparisons\footnote{https://futhark-lang.org/performance.html} between the
+parallel algorithm library \textit{Thrust} (implemented in C++/CUDA), and the
+array programming language Futhark, shows that there might severe speed
+improvements to gain by running these model calculations in Futhark, instead
+of in OpenCL and OpenMP.
+\\
+\\
+The goal of this project is to explore the potential speed gains obtained by
+rewriting, and testing the resulting speed improvements of, a subset of the
+\textit{Sasmodels} models.
+The subset will be chosen so that there are at least
+one ``simple'' model, one model of intermediate complexity, and one complex
+model in it.
+\\
+\\
+If rewriting the models results in a significant\footnote{I.e. a speed increase
+  in order of at least a magnitude}, speedup, it will reasonable to believe that the
+rest of the models in \textit{Sasmodels} can be rewritten for a similar speedup.
+\end{document}
+
