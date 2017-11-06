@@ -74,24 +74,56 @@ If rewriting the models results in a significant\footnote{I.e. a speed increase
   in order of at least a magnitude}, speedup, it will reasonable to believe that the
 rest of the models in \textit{Sasmodels} can be rewritten for a similar speedup.
 
+
+\section{Demonstration of use of finished project}
+% til vægs
+
+
+\section{Ease of use for almene brugere}
+% forskel på at skrive moduler, og bare at hente et oversat modul ned
+
 \section{Implementation}
 % current architecture of Sasmodels engine
 % description of kernelcl kernels
 % (smaller) description of kernelcl kernels
 % description of current kernelfut implementation
 % designovervejelser, hvorfor selvstændige moduler, hvorfor ikke bare udvide kernelpy
+%% hvorfor ikke bare definere futhark-Iq-funktionen som string i model.py?
+% fordi der ikke er noget kodegnererering ved runtime/ingen futhark-compile-fejl
+% under runtime, og prægenererede moduler kan deles med andre, uden disse
+% ``andre''' behøver have futhark-oversætteren selv.
 
 \section{Performance tests}
+
 % description of built-in sasmodels comparison functionality
 %% description of how comparison module has dictated the design of the futhark kernel (i.e. loading as much data as possible on init)
+
 % display results
+
 % discussion of futhark vs. python performance
+%% where does the performance gains come from?
+
 % discussion of futhark vs. opencl performance
+%% where does the performance gains come from?
+%%% MASSER AF REFERENCER TIL TROELS' PAPERS
+
+% correctness
 
 \section{Discussion, future work}
 % is this immediately useful? not on single fire runs with low nq
-% 
+% can be used for data streams / bundling
+% experience gains can lay groundwork for parallelising finding best match
 
-\section{conclusion}
+% user directed: ease of use,
+% (evt.) skønhedsfejl
+
+
+\section{Conclusion}
+% nævn at projektet er blevet præsenteret for en faktisk brugergruppe,
+% og fik god og konstruktiv feedback
+% det inspirerede til yderligere projekter/forbedringer indenfor sasmodels
+
+
+
 
 \end{document}
