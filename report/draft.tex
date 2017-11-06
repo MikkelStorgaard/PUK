@@ -40,10 +40,12 @@
 \clearpage\maketitle
 \thispagestyle{empty}
 
+\section*{Abstract}
+
 \newpage
 
-%% Write your dissertation here.
-\section*{Goal and motivation}
+\section{Introduction}
+\subsection{Goal and motivation}
 \textit{SasView} is a Small Angle Scattering (SAS) analysis package for the analysis of
 1D and 2D scattering data directly in inverse space.
 As \textit{SasView} is given data, it performs its analyses by running the input data
@@ -71,5 +73,25 @@ model in it.
 If rewriting the models results in a significant\footnote{I.e. a speed increase
   in order of at least a magnitude}, speedup, it will reasonable to believe that the
 rest of the models in \textit{Sasmodels} can be rewritten for a similar speedup.
-\end{document}
 
+\section{Implementation}
+% current architecture of Sasmodels engine
+% description of kernelcl kernels
+% (smaller) description of kernelcl kernels
+% description of current kernelfut implementation
+% designovervejelser, hvorfor selvstændige moduler, hvorfor ikke bare udvide kernelpy
+
+\section{Performance tests}
+% description of built-in sasmodels comparison functionality
+%% description of how comparison module has dictated the design of the futhark kernel (i.e. loading as much data as possible on init)
+% display results
+% discussion of futhark vs. python performance
+% discussion of futhark vs. opencl performance
+
+\section{Discussion, future work}
+% is this immediately useful? not on single fire runs with low nq
+% 
+
+\section{conclusion}
+
+\end{document}
