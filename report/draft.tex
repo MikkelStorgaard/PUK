@@ -114,12 +114,12 @@ As the scattering function \texttt{I(q)} and its parameters are the only
 two things that are strictly necessary in a model definition, the developer
 has the option to leave the model info defined with just these six properties.
 
-\sasmodels has built-in default definitions for \texttt{I(q_x,q_y)} if working
-with two-dimensional data, and other functions such as \texttt{form_volume(q)}
+\sasmodels has built-in default definitions for $I(q_x,q_y)$ if working
+with two-dimensional data, and other functions such as \texttt{form\_volume(q)}
 for working with voluminous scatterings.
 
 Therefore, it is optional for the developer to define a custom definition
-of \texttt{I(q_x, q_y)} or other default functions.
+of $I(q_x, q_y)$ or other default functions.
 An example of this can be seen in appendix dab or line.
 
 A minimum viable model is showed in figure \ref{fig:linemodel}, and a more
@@ -127,42 +127,111 @@ complex model can be seen in appendix \ref{app:core_shell}
 
 \begin{figure}
   % fuld beskrivelse af ax+b-figur, med parametre a, b, og en Iqxy
-  \caption{model for modelling a line}\label{fig:linemodel}
+  \caption{model info file for modelling a line}\label{fig:linemodel}
 \end{figure}
 
-\subsection{Defining \texttt{I(q)} in Python and OpenCL}
+\subsection{Defining \iq in Python and OpenCL}
 A \sasmodels \iq function can be written in either Python (which will be
 executed in a Numpy context at runtime), or it can be written in C, which will
 will be inserted into an OpenCL template, so that it can be compiled and 
 executed as a kernel in an OpenCL context, preferably on a GPU.
 
 A Python \iq can be seen in figure \ref{fig:linemodel}, whereas both DAB (figure
-\ref{fig:dab} and core_shell(figure \ref{fig:core_shell}) is written in C.
+\ref{fig:dab} and core\_shell(figure \ref{fig:core-shell}) is written in C.
+Notice that the main difference between the models lies in the Iq property.
+For Python models, \iq is a callable Python function, whilst the C \iq is a
+ string which is copy-pasted wholesale into aforementioned OpenCL template.
 
-But with the arrival of Futhark models in \sasmodels, there is now a third
-additional way of writing \sasmodels models.
+But with the addition of Futhark models in \sasmodels adds a third way of
+using and defining a \sasmodels model.
+
+\subsection{Using a Futhark model}
+\label{sec:using-futhark}
+There is a difference between defining and using a Futhark model.
+The \sasview user who wishes to use a Futhark model in his or her work does 
+not need more than the futhark model info file, and a copy of the compiled
+Futhark kernel. In fact, the futhark model info file is identical to OpenCL- 
+and Python model info files, except for in two properties.
+As show in figure \ref{fig:futhark_dab}, there has been added a flag 
+%CHECK THISSS!!!
+\texttt{model\_is\_futhark: true}, and \iq is now a path to a precompiled 
+Futhark kernel.
+
+The user does not need to have any Futhark compiler installed if he merely wants
+to use the precompiled Futhark module: Futhark models for \sasmodels compiles to
+portable Python libraries which has numpy and pyopencl as their only 
+dependencies - and as \sasmodels has these dependencies as well, the user will
+already have these dependencies sorted out, if he has a working installation of 
+\sasview or \sasmodels.
+
+\subsection{Defining a Futhark model}
+To have a usable Futhark kernel to run in \sasmodels, it is first necessary to
+define it as a Futhark program and compile it using \texttt{futhark-pyopencl}.
+A model \textit{m} itself is defined as a parametric Futhark module\footnote{
+  A more in-depth explanation of the complete definition of a Futhark module is 
+  in \ref{sec:generating-futhark}},
+which contains an Iq-function, an Iqxy- and a form\_volume function.
+It is the model programmers responsibility to fill in all three functions.
+
+%% figure
+
+A simple example of a Futhark model is the line module, 
+as depicted in figure \ref{fig:linemodel-futhark}.
+Note that Iqxy is non-default, whilst form\_volume is the default 
+implementation.
 
 
+\subsubsection{On the user friendliness of Futhark models}
+As shown in figure \ref{fig:linemodel-futhark}, there are currently two small 
+nuisances in Futhark models, compared to equivalent models written in
+Python/OpenCL:
+
+With both Python and OpenCL models, the programmer can leave out Iqxy and 
+form\_volume so that \sasmodels automatically fills in the default definition
+for these two functions instead.
+
+The Futhark programmer does not have this leisure yet, and must define the two
+functions no matter what. This is admittedly a piece of annoying boiler plate,
+but it is also a thing that can be solved by compartmentalising the offending
+functions away in a parametric library module.
+
+The less removable nuisance is that the programmer must explicitly extract the
+Iq function parameters from the list \texttt{local\_values}. This must be done
+in the order they appear in the model info parameter list.
+
+Iq functions in Python and OpenCL can be defined with any number of function 
+parameters, but in Futhark, we need to adhere to the type declaration of Iq 
+(see \ref{has-iq}), which means that Iq can take only two arguments; the 
+scattering vector \texttt{q}, and the list \texttt{local\_values} of parameters
+needed for the scattering.
+
+This makes for an ugly prelude to the actual body of the Iq function, as shown
+in fig\ref{fig:linemodel-futhark}, or more critically in models like 
+core-shell \ref{fig:core-shell}.
 
 
-
-
-
-
-
-
-
-
-
-
-\subsection{Using }
+\subsection{Generating Futhark models using parametric modules and a header}
+\label{sec:generating-futhark}
+\begin{lstlisting}
+module type has_iq = {
+Iq: real -> real[] -> real // the model's scattering function.
+Iqxy: real -> real -> real[] -> real // the model's 2D scattering function
+form_volume: real[] -> real // the model's form volume function.
+}  
+\end{lstlisting}
 
 % definition af gammel sasmodels-model
 % evt. kald af model.
 
 
-
 % til vægs
+
+\subsubsection{Why not Futhark models as model info strings instead standalone modules?}
+% designovervejelser, hvorfor selvstændige moduler, hvorfor ikke bare udvide kernelpy
+%% hvorfor ikke bare definere futhark-Iq-funktionen som string i model.py?
+% fordi der ikke er noget kodegnererering ved runtime/ingen futhark-compile-fejl
+% under runtime, og prægenererede moduler kan deles med andre, uden disse
+% ``andre''' behøver have futhark-oversætteren selv.
 
 
 \section{Ease of use for almene brugere}
@@ -173,11 +242,6 @@ additional way of writing \sasmodels models.
 % description of kernelcl kernels
 % (smaller) description of kernelcl kernels
 % description of current kernelfut implementation
-% designovervejelser, hvorfor selvstændige moduler, hvorfor ikke bare udvide kernelpy
-%% hvorfor ikke bare definere futhark-Iq-funktionen som string i model.py?
-% fordi der ikke er noget kodegnererering ved runtime/ingen futhark-compile-fejl
-% under runtime, og prægenererede moduler kan deles med andre, uden disse
-% ``andre''' behøver have futhark-oversætteren selv.
 
 \section{Performance tests}
 
@@ -191,6 +255,7 @@ additional way of writing \sasmodels models.
 
 % discussion of futhark vs. opencl performance
 %% where does the performance gains come from?
+% show core_shell-whatever; and elaborate on loop flattening into maps
 %%% MASSER AF REFERENCER TIL TROELS' PAPERS
 
 % correctness
