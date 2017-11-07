@@ -3,6 +3,7 @@
 \usepackage{eso-pic} % \AddToShipoutPicture
 \usepackage{graphicx} % \includegraphics
 \usepackage{listings} % \includegraphics
+\usepackage{pgfplots}
 
 %% Change `ku-farve` to `nat-farve` to use SCIENCE's old colors or
 %% `natbio-farve` to use SCIENCE's new colors and logo.
@@ -329,22 +330,112 @@ There are three reasons for that:
 % (smaller) description of kernelcl kernels
 % description of current kernelfut implementation
 
-\section{Performance tests}
-
+\section{Method and performance results}
 % description of built-in sasmodels comparison functionality
-%% description of how comparison module has dictated the design of the futhark kernel (i.e. loading as much data as possible on init)
+\sasmodels contains a comparison module called \texttt{compare.py}, which
+lets the user run different calculations on the same dataset.
+This module has been the basis of all my performance tests, and indeed also
+the module that has let me design Futhark models in the first place.
 
-% display results
+\subsection{Development method}
+The development of Futhark for \sasmodels has been largely test-driven.
+For any given already existing model in the \sasmodels catalogue that I have
+wished to implement in Futhark, I have started out by defining an equivalent
+model written in Futhark, and then used the comparison module to compare the
+ runs of the original model versus the Futhark implementation.
 
-% discussion of futhark vs. python performance
-%% where does the performance gains come from?
+The comparison module displays the average execution time of each of the models,
+which lets me track exactly how much faster (or slower) the Futhark model has
+been running, compared to the original implementation.
 
-% discussion of futhark vs. opencl performance
-%% where does the performance gains come from?
+Furthermore, and ultimately most important, the comparison module also
+revealed the difference in results between the two models. 
+As I have precisely zero knowledge on the field of Small Angle Scatterings, 
+the only option for me regarding correctness of the models has been to take
+the results of the already existing models as the "correct" results of the
+computations. Consequently, any difference between my Futhark results and the
+original results has been direct indicators of faulty implementations or bugs
+somewhere along my work.
+Therefore, I have been developing and debugging my solution by repeatedly
+comparing it's results to that of the original implementation.
+
+Conversely, I have chosen to accept test runs with exactly no difference
+between the original and the Futhark implementation, as indicators of a
+correct implementation. 
+Test runs with thousands of data points defined as double-precision
+with more than ten decimal points have still resulted in a total difference of
+zero\footnote{see \ref{sec:correctness}} between the models.
+This is what I base my assertion of a correctness on, as even the smallest 
+mistakes along the calculations would surely have resulted in a very significant
+accumulated error in the final results.
+
+The test driven development has also lead to some of the biggest performance
+optimizations in my design of kernelfut.py.
+In example, the initial tests showed that the Futhark kernels were unreasonably
+much slower than the already existing kernels. After some investigation I found
+that this was because the original implementation buffered the input data in the
+OpenCL context long time before the actual kernel was called in Python, whereas
+the first versions of the Futhark kernel buffered the input data in the OpenCL
+context as part of the \texttt{run\_kernel} function call.
+
+\subsection{Futhark vs. Python performance}
+I have tested Futhark vs. Python performance on two different models; 
+the \texttt{line} model and the \texttt{broad\_peak} model.
+
+\subsubsection{\texttt{line} model}
+The \iq function for the line model is defined as $I(q) = A + B*q$, which is
+equivalent to one of the most basic high school math functions, $f(x) = ax + b$.
+
+\begin{figure}
+    \begin{tikzpicture}
+      \begin{axis}[
+        mbarplot,
+        title={1D performance},
+        xlabel={number of datapoints},
+        ylabel={Time in milliseconds},
+        width=0.9\textwidth,
+        height=3.5cm,
+        symbolic x coords={100,500,2500,5000,10000},
+        bar width=9pt,
+        enlargelimits=0.15,
+        ybar=10pt,% configures ‘bar shift’
+        bar width=12pt,
+        nodes near coords,
+        legend style={legend pos=north west}
+      ]
+      \addplot plot coordinates {(100, 0.24 ) (500, 0.24 ) (2500, 0.26 ) (5000, 0.26 ) (10000, 0.28 )};
+      \addplot plot coordinates {(100, 0.93 ) (500, 0.94 ) (2500, 0.97 ) (5000, 0.95 ) (10000, 0.97 )};
+      \legend{Current, Futhark}
+      \end{axis}
+    \end{tikzpicture}
+    \label{fig:line-graph}
+    \caption{Comparison between Python and OpenCL performance for simple model}
+\end{figure}
+
+In figure \ref{fig:line-graph} we see that for one dimensional calculations,
+both implementations keep a steady execution time. Futhark is consistently 
+slower, but that can be explained by the overhead of using the Futhark kernels.
+
+More interesting is it to look at the execution time of the 2D version of the 
+experiment. For all \sasmodels 2D experiments, we are not just calculating \iq
+for each q, but actually $\sum_{q \in Q} \sum_{q \in Q} Iq(q_x, q_y)$.
+So if we have $n$ q, we need to perform $n^2$ calculations
+
+n datapoints of q results in
+having to calculate the scattering for q squared .
+we have that we are actually 
+¨
+
+
+
+\subsubsection{Where does the performance gains come from?}
+
+\subsection{Futhark vs. OpenCL performance}
+\subsubsection{Where does the performance gains come from?}
 % show core_shell-whatever; and elaborate on loop flattening into maps
 %%% MASSER AF REFERENCER TIL TROELS' PAPERS
 
-% correctness
+\subsection{Correctness of Futhark results}
 
 \section{Discussion, future work}
 % is this immediately useful? not on single fire runs with low nq
