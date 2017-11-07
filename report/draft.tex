@@ -4,6 +4,7 @@
 \usepackage{graphicx} % \includegraphics
 \usepackage{listings} % \includegraphics
 \usepackage{pgfplots}
+\usepackage{hyperref}
 
 %% Change `ku-farve` to `nat-farve` to use SCIENCE's old colors or
 %% `natbio-farve` to use SCIENCE's new colors and logo.
@@ -388,6 +389,7 @@ equivalent to one of the most basic high school math functions, $f(x) = ax + b$.
 
 \begin{figure}
     \begin{tikzpicture}
+      
       \begin{axis}[
         mbarplot,
         title={1D performance},
@@ -408,8 +410,31 @@ equivalent to one of the most basic high school math functions, $f(x) = ax + b$.
       \legend{Current, Futhark}
       \end{axis}
     \end{tikzpicture}
+    \begin{tikzpicture}
+      \begin{axis}[
+        mbarplot,
+        title={2D performance},
+        xlabel={number of datapoints},
+        ylabel={Time in milliseconds},
+        width=0.9\textwidth,
+        height=4cm,
+        symbolic x coords={100,500,2500,5000,10000},
+        bar width=9pt,
+        enlargelimits=0.15,
+        ybar=10pt,% configures ‘bar shift’
+        bar width=12pt,
+        nodes near coords,
+        legend style={legend pos=north west}
+      ]
+      \addplot plot coordinates {(100, 0.31 ) (500, 2.78 ) (2500, 127.01 ) (5000, 501.31 ) (10000, 1970.14 )};
+      \addplot plot coordinates {(100, 0.98 ) (500, 1.91 ) (2500, 22.73 ) (5000, 86.03 ) (10000, 338.10 )};
+
+      \legend{Current, Futhark}
+
+      \end{axis}
+    \end{tikzpicture}
     \label{fig:line-graph}
-    \caption{Comparison between Python and OpenCL performance for simple model}
+    \caption{Comparison between Python and Futhark performance for simple model}
 \end{figure}
 
 In figure \ref{fig:line-graph} we see that for one dimensional calculations,
@@ -419,19 +444,217 @@ slower, but that can be explained by the overhead of using the Futhark kernels.
 More interesting is it to look at the execution time of the 2D version of the 
 experiment. For all \sasmodels 2D experiments, we are not just calculating \iq
 for each q, but actually $\sum_{q \in Q} \sum_{q \in Q} Iq(q_x, q_y)$.
-So if we have $n$ q, we need to perform $n^2$ calculations
+So if we have $n$ q, we need to perform $n^2$ calculations.
 
-n datapoints of q results in
-having to calculate the scattering for q squared .
-we have that we are actually 
-¨
+We see in the figure, that Futhark at 10000^2 datapoints now greatly outperforms
+the Python model.
 
+\subsubsection{\texttt{broad\_peak} model}
+Broad Peak is quite a different beast than the line model from before. It's \iq
+function is defined as 
+$I(q) = \frac{A}{q^n} + \frac{C}{1 + (|q - q_0|\xi)^m} + B$.\footnote{see \url{http://www.sasview.org/docs/user/models/broad_peak.html}}
 
+\begin{figure}
+      \begin{tikzpicture}
+      \begin{axis}[
+        mbarplot,
+        title={1D performance},
+        xlabel={number of datapoints},
+        ylabel={Time in milliseconds},
+        width=0.9\textwidth,
+        height=3.5cm,
+        symbolic x coords={100,500,2500,5000,10000},
+        bar width=9pt,
+        enlargelimits=0.15,
+        ybar=10pt,% configures ‘bar shift’
+        bar width=12pt,
+        nodes near coords,
+        legend style={legend pos=north west}
+      ]
+      \addplot plot coordinates {(100,0.27) (500,0.30) (2500,0.45) (5000,0.63) (10000,1.22)};
+      \addplot plot coordinates {(100,1.22) (500,1.23) (2500,1.23) (5000,1.25) (10000,1.27)};
 
+      \legend{Current, Futhark}
+      \end{axis}
+    \end{tikzpicture}
+    \begin{tikzpicture}
+      \begin{axis}[
+        mbarplot,
+        title={2D performance},
+        xlabel={number of datapoints},
+        ylabel={Time in milliseconds},
+        width=0.9\textwidth,
+        height=4cm,
+        symbolic x coords={100,500,2500,5000,10000},
+        bar width=9pt,
+        enlargelimits=0.15,
+        ybar=10pt,% configures ‘bar shift’
+        bar width=12pt,
+        nodes near coords,
+        legend style={legend pos=north west}
+      ]
+      \addplot plot coordinates {(100,1.06 ) (500,21.50 ) (2500,675.12) (5000,2686.44 ) (10000,10687)};
+      \addplot plot coordinates {(100,1.27 ) (500,2.27 ) (2500,27.48) (5000,103.66 ) (10000,409)};
+
+      \legend{Current, Futhark}
+
+      \end{axis}
+    \end{tikzpicture}
+    \label{fig:broad-peak-graph}
+    \caption{Comparison between Python and Futhark performance for complex model}
+\end{figure}
+
+In figure \ref{fig:line-graph} we see that for one dimensional calculations,
+both implementations keep a steady execution time. Futhark is consistently 
+slower, but that can be explained by the overhead of using the Futhark kernels.
+
+More interesting is it to look at the execution time of the 2D version of the 
+experiment. For all \sasmodels 2D experiments, we are not just calculating \iq
+for each q, but actually $\sum_{q \in Q} \sum_{q \in Q} Iq(q_x, q_y)$.
+So if we have $n$ q, we need to perform $n^2$ calculations.
+
+We see in the figure, that Futhark at 10000^2 datapoints now greatly outperforms
+the Python model.
 \subsubsection{Where does the performance gains come from?}
+These comparisons are between Python/Numpy- and Futhark models.
+Although Numpy can execute both of the models as vectorized calculations, 
+it is still vastly outperformed by Futhark, which can run hundreds of threads 
+simultaniously on the GPU.
+
+## REFERENCER HER ##
 
 \subsection{Futhark vs. OpenCL performance}
+\subsubsection{The \texttt{DAB} model}
+The DAB model is relatively simple, as it is described as $I(q) = \frac{L^3}{1 + (qL)^2}$,
+requiring us to work with just one single variable.
+  \begin{figure}
+    \begin{tikzpicture}
+      \begin{axis}[
+        mbarplot,
+        title={1D performance},
+        xlabel={number of datapoints},
+        ylabel={Time in milliseconds},
+        width=0.9\textwidth,
+        height=3.5cm,
+        symbolic x coords={100,500,2500,5000,10000},
+        bar width=9pt,
+        enlargelimits=0.15,
+        ybar=10pt,% configures ‘bar shift’
+        bar width=12pt,
+        nodes near coords,
+        legend style={legend pos=north west}
+      ]
+      \addplot plot coordinates {(100, 0.54 ) (500, 0.74 ) (2500, 0.76 ) (5000, 0.74 ) (10000, 0.77 )};
+      \addplot plot coordinates {(100, 0.86 ) (500, 0.85 ) (2500, 0.87 ) (5000, 0.87 ) (10000, 0.90 )};
+
+      \legend{Current, Futhark}
+
+      \end{axis}
+    \end{tikzpicture}
+    \begin{tikzpicture}
+      \begin{axis}[
+        mbarplot,
+        title={2D performance},
+        xlabel={number of datapoints},
+        ylabel={Time in milliseconds},
+        width=0.9\textwidth,
+        height=4cm,
+        symbolic x coords={100,500,2500,5000,10000},
+        bar width=9pt,
+        enlargelimits=0.15,
+        ybar=10pt,% configures ‘bar shift’
+        bar width=12pt,
+        nodes near coords,
+        legend style={legend pos=north west}
+      ]
+      \addplot plot coordinates {(100, 0.78 ) (500, 1.61 ) (2500, 50.36 ) (5000, 196.19 ) (10000, 771.43 )};
+      \addplot plot coordinates {(100, 0.90 ) (500, 1.75 ) (2500, 26.25 ) (5000, 101.59 ) (10000, 402.69 )};
+
+      \legend{Current, Futhark}
+
+      \end{axis}
+    \end{tikzpicture}
+    \label{fig:dab-graph}
+    \caption{Comparison between OpenCL and Futhark performance for simple model}
+  \end{figure}
+
+
+\subsubsection{The \texttt{Core Shell Parallelepiped} model}
+The Core Shell Parallelepiped model is by far one of the most complex models
+in \sasmodels' catalogue.
+With it's more than ten parameters and it's two nested loops, it is 
+a candidate model for the Futhark compiler to attempt to optimize.
+  \begin{figure}
+    \begin{tikzpicture}
+      \begin{axis}[
+        mbarplot,
+        title={1D performance},
+        xlabel={number of datapoints},
+        ylabel={Time in milliseconds},
+        width=0.9\textwidth,
+        height=3.5cm,
+        symbolic x coords={100,500,2500,5000,10000},
+        bar width=9pt,
+        enlargelimits=0.15,
+        ybar=10pt,% configures ‘bar shift’
+        bar width=12pt,
+        nodes near coords,
+        legend style={legend pos=north west}
+      ]
+      \addplot plot coordinates {(100, 20.88 ) (500, 21.19 ) (2500, 21.99) (5000, 22.44 ) (10000, 42.99)};
+      \addplot plot coordinates {(100, 2.68 ) (500, 3.67 ) (2500, 8.00 ) (5000, 13.18 ) (10000,23.90 )};
+
+      \legend{Current, Futhark}
+
+      \end{axis}
+    \end{tikzpicture}
+    \begin{tikzpicture}
+      \begin{axis}[
+        mbarplot,
+        title={2D performance},
+        xlabel={number of datapoints},
+        ylabel={Time in milliseconds},
+        width=0.9\textwidth,
+        height=4cm,
+        symbolic x coords={100,500,2500,5000,10000},
+        bar width=9pt,
+        enlargelimits=0.15,
+        ybar=10pt,% configures ‘bar shift’
+        bar width=12pt,
+        nodes near coords,
+        legend style={legend pos=north west}
+      ]
+      \addplot plot coordinates {(100, 0.83 ) (500, 2.17 ) (2500, 61.66 ) (5000, 232.32 ) (10000, 986.73 )};
+      \addplot plot coordinates {(100, 2.04 ) (500, 2.88 ) (2500, 23.83 ) (5000, 91.87 ) (10000, 357.89 )};
+
+      \legend{Current, Futhark}
+
+      \end{axis}
+    \end{tikzpicture}
+    \label{fig:core-shell-graph}
+    \caption{Comparison between OpenCL and Futhark performance for complex model}
+  \end{figure}
+
+
 \subsubsection{Where does the performance gains come from?}
+While it was expected to see Futhark outperform the strictly CPU based 
+computations performed by Numpy in the Python models, it was more uncertain
+how much (or even whether) Futhark would outperform OpenCL.
+
+However, data shows that Futhark does perform better. The increased performance 
+in figure \ref{fig:dab} is not really significant until we reach very high n,
+which can be attributed to the simplicity of the model. With such simple models,
+Futhark cannot really exploit any of the possible optimizations, but it can gain
+some advantage by doing FUTHARK MAGI, which actually ends up roughly halving the 
+execution time compared to the original implementation.
+
+However, when we work with the rewritten core shell parallelepiped, we see huge
+speedups even at n=100. This 
+FUTHARK-MAGI HOISTING OG TING PÅ MAPS
+
+
+
+
 % show core_shell-whatever; and elaborate on loop flattening into maps
 %%% MASSER AF REFERENCER TIL TROELS' PAPERS
 
