@@ -32,6 +32,8 @@
 \newcommand{\sasmodels}{\textit{SasModels}}
 \newcommand{\sasview}{\textit{SasView}}
 \newcommand{\iq}{\textit{I(q)}}
+\newcommand{\foriq}{\texttt{for\_iq}}
+\newcommand{\hasiq}{\texttt{has\_iq}}
 \begin{document}
 
 
@@ -165,6 +167,7 @@ already have these dependencies sorted out, if he has a working installation of
 \sasview or \sasmodels.
 
 \subsection{Defining a Futhark model}
+\label{sec:defining-futhark-model}
 To have a usable Futhark kernel to run in \sasmodels, it is first necessary to
 define it as a Futhark program and compile it using \texttt{futhark-pyopencl}.
 A model \textit{m} itself is defined as a parametric Futhark module\footnote{
@@ -212,30 +215,108 @@ core-shell \ref{fig:core-shell}.
 
 \subsection{Generating Futhark models using parametric modules and a header}
 \label{sec:generating-futhark}
-\begin{lstlisting}
-module type has_iq = {
-Iq: real -> real[] -> real // the model's scattering function.
-Iqxy: real -> real -> real[] -> real // the model's 2D scattering function
-form_volume: real[] -> real // the model's form volume function.
-}  
-\end{lstlisting}
+As mentioned in \ref{sec:defining-futhark-model}, the futhark model developer
+does only need to define three functions to be able to compile a working 
+\sasmodels Futhark model.
+However, those three functions are merely used by a parametric Futhark module 
+\texttt{for\_iq}, which takes care of the actual execution of the 
+Futhark kernel.
+Let's go through the actual implementation of the Futhark models.
 
-% definition af gammel sasmodels-model
-% evt. kald af model.
+\subsubsection{line\_futhark.fut (a Futhark model)}
+\label{sec:line-fut}
+\begin{figure}
+  % hele line_futhark.fut
+  \caption{The complete definition of the line model implemented in Futhark.}
+  \label{fig:line-fut}
+\end{figure}
+There a several things happening in this fig. \ref{fig:line-fut}, besides the 
+definition of the line Iq function.
+
+\texttt{module line} takes either single- or double precision floats as a
+parameter, and then assigns the type alias \texttt{dtype} to the type of the
+input parameter. This means that we can use \texttt{dtype} in the type
+declarations throughout the module, and define the module for floats in general,
+instead of maybe having to define linef64- and linef32 modules.
+
+Then, two kernels (one for each of f32 and f64) are initialised by giving
+the parametric module \texttt{for\_iq} the line module and a data type 
+as parameters, returning \texttt{kernel\_float32} and \texttt{kernel\_float64}.
+
+Given these two modules, we can finally define four entry points into the
+finished model. These are the four entry points that can be called by \sasmodels
+whenever a \sasmodels experiment needs to execute calculations in a futhark
+kernel.
+Each of the entry points are simply passing on their call parameters to the 
+\texttt{run\_kernel} functions defined in the \texttt{for\_iq} module.
+Everything after the module line definition is boilerplate code, and could
+possibly defined in a less inelegant way in a later revision, but currently, it 
+is a necessary part of every Futhark model.
+
+Other models, such as core-shell %FIX\
+imports libraries so they are available in the Iq function.
+%% som vist i core shell, kan det også være nødvendigt at definere og importere 
+% ekstra biblioteker
+
+\subsubsection{header/for\_iq.fut (the Futhark kernel template)}
+\texttt{for\_iq.fut} contains the module type declaration for the \hasiq module,
+ and it contains the definition of the parametric \foriq module. 
+
+The type declaration \hasiq ensures, that any model module that is
+used as a parameter for the \foriq module defines at least the functions
+Iq, Iqxy and form\_volume, as these functions are necessary for the definition
+of the Futhark kernel.
+
+Next, we have the actual definition of the module \foriq:
+\foriq takes two parameters (a parametric Futhark model), and a real type 
+to instantiate it with.
+It then instantiates the model with the real type, making the finished Iq module
+\texttt{Iq} available throughout the rest of the kernel.
 
 
-% til vægs
-
-\subsubsection{Why not Futhark models as model info strings instead standalone modules?}
-% designovervejelser, hvorfor selvstændige moduler, hvorfor ikke bare udvide kernelpy
-%% hvorfor ikke bare definere futhark-Iq-funktionen som string i model.py?
-% fordi der ikke er noget kodegnererering ved runtime/ingen futhark-compile-fejl
-% under runtime, og prægenererede moduler kan deles med andre, uden disse
-% ``andre''' behøver have futhark-oversætteren selv.
 
 
-\section{Ease of use for almene brugere}
-% forskel på at skrive moduler, og bare at hente et oversat modul ned
+\begin{figure}
+  % hele for_iq.fut
+  % forklar module type
+  % forklar module 
+  \caption{The Futhark template that is used by the individual models.}
+  \label{fig:for-iq}
+\end{figure}
+
+\subsubsection{Why not implement Futhark models as model info strings 
+instead of standalone modules?}
+OpenCL kernels are generated by copy/pasting the desired \iq function body
+into a template, and then compiling the resulting source code.
+This happens at runtime in \sasmodels, which means that the kernels aren't
+ actually compiled until right before \sasmodels needs them.
+
+Futhark models eschews this design and opts instead to separate code generation
+and model usage completely.
+It would be simple to copy the design of the OpenCL kernels, and compile Futhark
+kernels on \sasmodels runtime, but this design was cast aside in favour of the
+design described in sec \ref{sec:generating-futhark}.
+
+There are three reasons for that:
+\begin{enumerate}
+  \item Removing code generation from runtime unequivocally decreases the time
+  it takes to run a \sasmodels calculation. Although time taken by code 
+  generation is not covered by \sasmodels' built-in benchmark modules, it should
+  be obvious that a program that merely executes a kernel computation has a 
+  shorter runtime than a program that has to compile the kernel before it
+  executes the kernel computation.
+  
+  \item Compiling a kernel just in time brings the risk of encountering 
+  Futhark compilation errors at \sasmodels runtime. 
+  It is arguably a user experience nightmare to encounter compilation errors at 
+  runtime, which is why Futhark models keeps compilation separate from runtime.
+  
+  \item Compiling Futhark models down to self-contained\footnote{depending only 
+  on numpy and pyopencl} Python libraries means that Futhark models are 
+  completely portable, and as such can be used by any \sasmodels or \sasview 
+  user, without them needing to have a Futhark compiler installed on their 
+  workstations.
+\end{enumerate}
 
 \section{Implementation}
 % current architecture of Sasmodels engine
