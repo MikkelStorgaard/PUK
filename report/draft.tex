@@ -16,7 +16,8 @@
   showspaces=false,
   showstringspaces=false,
   columns=flexible,
-  breaklines=true
+  breaklines=true,
+  numbers=left
 }
 
 %% Change `ku-farve` to `nat-farve` to use SCIENCE's old colors or
@@ -66,6 +67,16 @@
 \thispagestyle{empty}
 
 \section*{Abstract}
+This report describes the design and implementation of a Futhark extension for
+the modelling engine \sasmodels.
+\sasmodels{} performs small angle scattering calculations for the \sasview{}
+modelling suite, by sending it's input to a range of calculation models
+implemented in Python and OpenCL.\\\\
+
+%%% whaaaat
+
+
+
 
 \newpage
 
@@ -133,16 +144,14 @@ As the scattering function \texttt{I(q)} and its parameters are the only
 two things that are strictly necessary in a model definition, the developer
 has the option to leave the model info defined with just these six properties.
 
-\sasmodels has built-in default definitions for $I(q_x,q_y)$ if working
+\sasmodels{} has built-in default definitions for $I(q_x,q_y)$ if working
 with two-dimensional data, and other functions such as \texttt{form\_volume(q)}
 for working with voluminous scatterings.
 
 Therefore, it is optional for the developer to define a custom definition
 of $I(q_x, q_y)$ or other default functions.
-An example of this can be seen in appendix dab or line.
-
-A minimum viable model is showed in figure \ref{fig:linemodel}, and a more
-complex model can be seen in appendix \ref{app:core_shell}
+An example of this can be seen in figure \ref{fig:linemodel}.
+A more complex model can be seen in appendix \ref{fig:core_shell}
 
 \begin{figure}
   % fuld beskrivelse af ax+b-figur, med parametre a, b, og en Iqxy
@@ -193,8 +202,6 @@ A model \textit{m} itself is defined as a parametric Futhark module\footnote{
 which contains an Iq-function, an Iqxy- and a form\_volume function.
 It is the model programmers responsibility to fill in all three functions.
 
-%% figure
-
 A simple example of a Futhark model is the line module, 
 as depicted in figure \ref{fig:linemodel-futhark}.
 Note that Iqxy is non-default, whilst form\_volume is the default 
@@ -242,12 +249,14 @@ Let's go through the actual implementation of the Futhark models.
 
 \subsubsection{line\_futhark.fut (a Futhark model)}
 \label{sec:line-fut}
+
 \begin{figure}
-  % hele line_futhark.fut
+  \lstinputlisting[]{../sasmodels/sasmodels/models/futharks/line_futhark.fut}
   \caption{The complete definition of the line model implemented in Futhark.}
-  \label{fig:line-fut}
+  \label{fig:linemodel-futhark-full}
 \end{figure}
-There a several things happening in this fig. \ref{fig:line-fut}, besides the 
+
+There a several things happening in this fig. \ref{fig:linemodel-futhark-full}, besides the 
 definition of the line Iq function.
 
 \texttt{module line} takes either single- or double precision floats as a
@@ -296,9 +305,7 @@ Then finally, it uses the Iq module to define the two functions
 the Iq module.
 
 \begin{figure}
-  % hele for_iq.fut
-  % forklar module type
-  % forklar module 
+  \lstinputlisting[]{../sasmodels/sasmodels/models/futharks/header/for_iq.fut}
   \caption{The Futhark template that is used by the individual models.}
   \label{fig:for-iq}
 \end{figure}
@@ -786,33 +793,41 @@ of the attendants expressed an interest in.
 
 \section*{Appendices}
 
-\subsection*{DAB model}
 \begin{figure}
-  \lstinputlisting[language=Python]{../sasmodels/sasmodels/models/dab.py}
-  \label{fig:dab}
+  \lstinputlisting[language=Python, firstline=44,lastline=66]{../sasmodels/sasmodels/models/dab.py}
+  \label{fig:dabmodel}
   \caption{The DAB model}
 \end{figure}
 
-\subsection*{broad\_peak model}
 \begin{figure}
-  \lstinputlisting[language=Python]{../sasmodels/sasmodels/models/broad_peak.py}
+  \lstinputlisting[language=Python, firstline=44, lastline=94]{../sasmodels/sasmodels/models/broad_peak.py}
+  \label{fig:broadpeakmodel}
   \caption{The broad_peak model}
 \end{figure}
 
 \begin{figure}
-  \lstinputlisting[language=Python]{../sasmodels/sasmodels/models/line.py}
+  \lstinputlisting[language=Python, linerange={27-55,57-68}]{../sasmodels/sasmodels/models/line.py}
+  \label{fig:linemodel}
   \caption{The line model}
 \end{figure}
 
 \begin{figure}
-  \lstinputlisting[]{../sasmodels/sasmodels/models/futharks/line_futhark.fut}
+  \lstinputlisting[firstline=2, lastline=18]{../sasmodels/sasmodels/models/futharks/line_futhark.fut}
   \label{fig:linemodel-futhark}
   \caption{The line model written in Futhark}
 \end{figure}
 
 \begin{figure}
-  \lstinputlisting[language=Python]{../sasmodels/sasmodels/models/line_futhark.py}
+  \lstinputlisting[language=Python, firstline=27, lastline=49]{../sasmodels/sasmodels/models/line_futhark.py}
+  \label{fig:linemodelinfo-futhark}
   \caption{The line model info file designating a Futhark path}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[language=Python, linerange={131-162}]{../sasmodels/sasmodels/models/core_shell_parallelepiped.py}
+  \lstinputlisting[language=C, linerange={10-81}]{../sasmodels/sasmodels/models/core_shell_parallelepiped.c}
+  \label{fig:core_shell}
+  \caption{The original core\_shell\_parallelepiped model (Iq and form volume)}
 \end{figure}
 
 \end{document}
