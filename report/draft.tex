@@ -5,6 +5,19 @@
 \usepackage{listings} % \includegraphics
 \usepackage{pgfplots}
 \usepackage{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{mdframed}
+\usepackage{float}
+\floatstyle{boxed}
+\restylefloat{figure}
+
+\lstset{
+  basicstyle=\tiny,
+  showspaces=false,
+  showstringspaces=false,
+  columns=flexible,
+  breaklines=true
+}
 
 %% Change `ku-farve` to `nat-farve` to use SCIENCE's old colors or
 %% `natbio-farve` to use SCIENCE's new colors and logo.
@@ -13,30 +26,34 @@
 %% Change `ku-en` to `nat-en` to use the `Faculty of Science` header
 \def \TitlePDF   {include/ku-en}  % University of Copenhagen
 
+\newcommand{\sasmodels}{\textit{SasModels}}
+\newcommand{\sasview}{\textit{SasView}}
+\newcommand{\iq}{\textit{I(q)}}
+\newcommand{\foriq}{\texttt{for\_iq}}
+\newcommand{\hasiq}{\texttt{has\_iq}}
+\newcommand{\futhark}{\texttt{Futhark for SasModels}}
+\newcommand{\barheight}{5cm}
+
 \title{
   \vspace{3cm}
-  \Huge{Optimizing SasView models} \\
-  \Large{Enhancing performance by rewriting kernels from OpenCL/OpenMP to Futhark}
+  \Huge{\futhark}\\
+  \Large{Enhancing performance by rewriting kernels from Python/OpenCL to
+    Futhark}
 }
 
 \author{
-  \Large{Mikkel Storgaard Knudsen}
-  \\ \texttt{mikkelstorgaard@gmail.com} \\
+  \Large{Mikkel Storgaard Knudsen}\\
+  \texttt{mikkelstorgaard@gmail.com}\\
   \\
-  \Large{Supervisor}
-  \\ Martin Elsman
-  \\ \texttt{mael@di.ku.dk} \\
+  \Large{Supervisor}\\
+  Martin Elsman\\
+  \texttt{mael@di.ku.dk}
 }
 
 \date{
     \today
 }
 
-\newcommand{\sasmodels}{\textit{SasModels}}
-\newcommand{\sasview}{\textit{SasView}}
-\newcommand{\iq}{\textit{I(q)}}
-\newcommand{\foriq}{\texttt{for\_iq}}
-\newcommand{\hasiq}{\texttt{has\_iq}}
 \begin{document}
 
 
@@ -54,35 +71,31 @@
 
 \section{Introduction}
 \subsection{Goal and motivation}
-\textit{SasView} is a Small Angle Scattering (SAS) analysis package for the analysis of
-1D and 2D scattering data directly in inverse space.
-As \textit{SasView} is given data, it performs its analyses by running the input data
-through theory models provided by the standalone module \textit{Sasmodels}.
-\\
-\\
-The \textit{Sasmodels} models utilizes a set of kernels, which are implemented
-in both OpenCL and OpenMP.
-However, benchmark
-comparisons\footnote{https://futhark-lang.org/performance.html} between the
-parallel algorithm library \textit{Thrust} (implemented in C++/CUDA), and the
-array programming language Futhark, shows that there might severe speed
-improvements to gain by running these model calculations in Futhark, instead
-of in OpenCL and OpenMP.
-\\
-\\
+\sasview is a Small Angle Scattering (SAS) analysis package for the
+analysis of 1D and 2D scattering data directly in inverse space.
+As \sasview is given data, it performs its analyses by running the
+input data through theory models provided by the standalone module
+\sasmodels.
+
+The \sasmodels models utilizes a set of kernels, which are implemented
+in both Python and OpenCL. However, benchmark
+comparisons\footnote{https://futhark-lang.org/performance.html}
+between the parallel algorithm library \textit{Thrust}
+(implemented in C++/CUDA), and the array programming language Futhark, shows
+that there might severe speed improvements to gain by running these model
+calculations in Futhark, instead of in OpenCL as they are now.
+
 The goal of this project is to explore the potential speed gains obtained by
 rewriting, and testing the resulting speed improvements of, a subset of the
-\textit{Sasmodels} models.
+\sasmodels models.
 The subset will be chosen so that there are at least
 one ``simple'' model, one model of intermediate complexity, and one complex
 model in it.
-\\
-\\
+
 If rewriting the models results in a significant\footnote{I.e. a speed increase
   in order of at least a magnitude}, speedup, it will reasonable to believe that 
-  the rest of the models in \textit{Sasmodels} can be rewritten for a similar
+  the rest of the models in \sasmodels can be rewritten for a similar
   speedup.
-
 
 \section{Demonstration of use of finished project}
 As \sasmodels is rarely used on its own, but rather as the backbone of 
@@ -90,6 +103,7 @@ As \sasmodels is rarely used on its own, but rather as the backbone of
 \sasview usage.
 Instead, I will describe how Futhark models in \sasmodels are leveraged 
 by \sasmodels' users.
+måske ikke så meget mere her
 % mere
 
 
@@ -331,14 +345,14 @@ There are three reasons for that:
 % (smaller) description of kernelcl kernels
 % description of current kernelfut implementation
 
-\section{Method and performance results}
+\section{Method}
+
 % description of built-in sasmodels comparison functionality
 \sasmodels contains a comparison module called \texttt{compare.py}, which
 lets the user run different calculations on the same dataset.
 This module has been the basis of all my performance tests, and indeed also
 the module that has let me design Futhark models in the first place.
 
-\subsection{Development method}
 The development of Futhark for \sasmodels has been largely test-driven.
 For any given already existing model in the \sasmodels catalogue that I have
 wished to implement in Futhark, I have started out by defining an equivalent
@@ -379,6 +393,8 @@ OpenCL context long time before the actual kernel was called in Python, whereas
 the first versions of the Futhark kernel buffered the input data in the OpenCL
 context as part of the \texttt{run\_kernel} function call.
 
+\section{Performance results}
+\label{performance}
 \subsection{Futhark vs. Python performance}
 I have tested Futhark vs. Python performance on two different models; 
 the \texttt{line} model and the \texttt{broad\_peak} model.
@@ -389,14 +405,13 @@ equivalent to one of the most basic high school math functions, $f(x) = ax + b$.
 
 \begin{figure}
     \begin{tikzpicture}
-      
       \begin{axis}[
         mbarplot,
         title={1D performance},
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
         width=0.9\textwidth,
-        height=3.5cm,
+        height=\barheight,
         symbolic x coords={100,500,2500,5000,10000},
         bar width=9pt,
         enlargelimits=0.15,
@@ -417,7 +432,7 @@ equivalent to one of the most basic high school math functions, $f(x) = ax + b$.
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
         width=0.9\textwidth,
-        height=4cm,
+        height=\barheight,
         symbolic x coords={100,500,2500,5000,10000},
         bar width=9pt,
         enlargelimits=0.15,
@@ -462,7 +477,7 @@ $I(q) = \frac{A}{q^n} + \frac{C}{1 + (|q - q_0|\xi)^m} + B$.\footnote{see \url{h
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
         width=0.9\textwidth,
-        height=3.5cm,
+        height=\barheight,
         symbolic x coords={100,500,2500,5000,10000},
         bar width=9pt,
         enlargelimits=0.15,
@@ -484,7 +499,7 @@ $I(q) = \frac{A}{q^n} + \frac{C}{1 + (|q - q_0|\xi)^m} + B$.\footnote{see \url{h
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
         width=0.9\textwidth,
-        height=4cm,
+        height=\barheight,
         symbolic x coords={100,500,2500,5000,10000},
         bar width=9pt,
         enlargelimits=0.15,
@@ -513,15 +528,20 @@ experiment. For all \sasmodels 2D experiments, we are not just calculating \iq
 for each q, but actually $\sum_{q \in Q} \sum_{q \in Q} Iq(q_x, q_y)$.
 So if we have $n$ q, we need to perform $n^2$ calculations.
 
-We see in the figure, that Futhark at 10000^2 datapoints now greatly outperforms
+We see in the figure, that Futhark at $10000^2$ datapoints now greatly outperforms
 the Python model.
-\subsubsection{Where does the performance gains come from?}
+
+\begin{mdframed}[
+  frametitle={Why does Futhark perform faster than Python?},
+  nobreak=true
+  ]
 These comparisons are between Python/Numpy- and Futhark models.
 Although Numpy can execute both of the models as vectorized calculations, 
 it is still vastly outperformed by Futhark, which can run hundreds of threads 
 simultaniously on the GPU.
 
 ## REFERENCER HER ##
+\end{mdframed}
 
 \subsection{Futhark vs. OpenCL performance}
 \subsubsection{The \texttt{DAB} model}
@@ -535,7 +555,7 @@ requiring us to work with just one single variable.
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
         width=0.9\textwidth,
-        height=3.5cm,
+        height=\barheight,
         symbolic x coords={100,500,2500,5000,10000},
         bar width=9pt,
         enlargelimits=0.15,
@@ -558,7 +578,7 @@ requiring us to work with just one single variable.
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
         width=0.9\textwidth,
-        height=4cm,
+        height=\barheight,
         symbolic x coords={100,500,2500,5000,10000},
         bar width=9pt,
         enlargelimits=0.15,
@@ -592,7 +612,7 @@ a candidate model for the Futhark compiler to attempt to optimize.
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
         width=0.9\textwidth,
-        height=3.5cm,
+        height=\barheight,
         symbolic x coords={100,500,2500,5000,10000},
         bar width=9pt,
         enlargelimits=0.15,
@@ -615,7 +635,7 @@ a candidate model for the Futhark compiler to attempt to optimize.
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
         width=0.9\textwidth,
-        height=4cm,
+        height=\barheight,
         symbolic x coords={100,500,2500,5000,10000},
         bar width=9pt,
         enlargelimits=0.15,
@@ -636,7 +656,9 @@ a candidate model for the Futhark compiler to attempt to optimize.
   \end{figure}
 
 
-\subsubsection{Where does the performance gains come from?}
+  \begin{mdframed}[
+    frametitle={Why does Futhark perform faster than OpenCL?},
+    nobreak=true]
 While it was expected to see Futhark outperform the strictly CPU based 
 computations performed by Numpy in the Python models, it was more uncertain
 how much (or even whether) Futhark would outperform OpenCL.
@@ -652,24 +674,111 @@ However, when we work with the rewritten core shell parallelepiped, we see huge
 speedups even at n=100. This 
 FUTHARK-MAGI HOISTING OG TING PÅ MAPS
 
-
-
-
-% show core_shell-whatever; and elaborate on loop flattening into maps
+\# show core-shell-whatever; and elaborate on loop flattening into maps
 %%% MASSER AF REFERENCER TIL TROELS' PAPERS
+\end{mdframed}
 
-\subsection{Correctness of Futhark results}
 
 \section{Discussion, future work}
-% is this immediately useful? not on single fire runs with low nq
-% can be used for data streams / bundling
-% experience gains can lay groundwork for parallelising finding best match
+\label{sec:discussion}
+The performance tests in \ref{performance} unequivocally shows, that
+there are speedups to gain by running Futhark kernels in favor of Python or
+OpenCL kernels.
+In general, Futhark starts surpassing the performance of competing kernels, when
+sample sizes rise above n=INDSÆT N. However, these gains are currently
+irrelevant for the most \sasview use cases, as almost all
+experiments are carried out on sample sizes of between 100-500.
+However, meetings with external project owner Wojciech Potrzebowski lead to the
+suggestion that simple bundling of \sasview experiments would enable us
+to leverage the Futhark speed improvements directly.
 
-% user directed: ease of use,
-% (evt.) skønhedsfejl
+In example, one could imagine running an experiment that continuously sends
+sensor data for processing in \sasview / \sasmodels.
+Instead of running an experiment for each sample\footnote{of size n=100-500}
+from the stream, one could let \sasmodels bundle these input samples in packages
+of 10-50 samples
+instead, and calculate these collectively to leverage the speedups that are
+apparent on Futhark calculations on samples of larger sizes.
 
+Please note, that sample sizes might have an upper bound, depending on the
+memory available on the workstations running the experiments.
+
+\subsection{Finding best match in \sasview}
+\label{sec:best-match}
+In addition to bundling input data, Wojciech also did suggest that the Futhark
+speedups could be used to implement faster best-match-finding for \sasview
+experiments.
+
+Among other things, \sasview is used to test multiple models against a data set,
+to find out which of the models that actually fits the data most closely.
+Currently this is not done in an efficient manner.
+Therefore, it would be interesting to implement a way of running multiple models
+on the same data set in parallel.
+And given the current Futhark vs. OpenCL results, the implementation should
+pursued in Futhark, as it has already been shown to be optimal
+(compared to OpenCL).
+
+
+\subsection{Usability of Futhark models}
+It is relevant to discuss how useful Futhark models are to the \sasview user
+groups. For the users who merely wants to use the models, it is not necessary
+to understand the implementation itself at all, as the user facing part of
+the model is just the model info file, which is just the same as the model infos
+for Python and OpenCL models \ref{sec:using-futhark}.
+
+However, for the model developer, it is now also necessary to have at least a
+rudimentary understanding of functional programming.
+In example, developers will have to learn how to use maps in
+places where they would usually use loops.
+
+Furthermore, the current solution requires severe amounts of boilerplate code to
+be included in the futhark model file.
+This boilerplate is caused by the usage of Futhark's module system, and
+therefore not strictly part of defining i.e. the \iq function of a model.
+The boilerplate might become a distraction for the model developer, so
+there might be a smaller educational challenge to solve here as well.
 
 \section{Conclusion}
+To answer the questions raised in this project definition, it was first
+necessary to implement a \sasmodels kernel for Futhark models. This was done
+successfully and in a very non-destructive way in the already existing
+\sasmodels code base.
+
+The kernel itself (\texttt{kernelfut.py}) depends on the existing code base, but
+the total change of the original code is two lines: an extra case in the
+switch statement that decides which kernel type to run for a given model.
+
+For Futhark model performances increases themselves, the results in
+\ref{performances}, tells us that there are performance increase of between
+200- and 2000 percent, depending on the original model's language and
+complexity.
+
+These gains are only realised when the sample size for a given run is high
+enough, but section \ref{sec:discussion} has proposals for \sasmodels extensions
+that could help \sasmodels users to reach these sample sizes, by bundling
+experiments.
+
+\begin{mdframed}[
+  frametitle={Presentation at \sasview{} Code Camp},
+  nobreak=true
+  ]
+Together with my supervisor and Futhark designer Troels Henriksen,
+I was invited for an hour-long presentation and discussion of \futhark{} at the
+yearly \textit{SasView Code Camp}, held at the Copenhagen Bio Science Park.\\\\
+There was about 20 \sasview{} users and developers attending at the presentation,
+which was about the definition and implementation of \futhark{}, along with
+a presentation of the result performance boosts for selected models.\\\\
+The project was well-received by the audience, and there was an eager discussion
+of whether and how it could be possible to really exploit the Futhark
+optimizations.\\\\
+The primary suggestion was to leverage Futhark to find best-fitting models,
+as described in \ref{sec:best-match}, but bundling continuous input from
+a sensor to exploit Futhark speed ups at high n was also a feature that many
+of the attendants expressed an interest in.
+\end{mdframed}
+
+
+
 % nævn at projektet er blevet præsenteret for en faktisk brugergruppe,
 % og fik god og konstruktiv feedback
 % det inspirerede til yderligere projekter/forbedringer indenfor sasmodels
