@@ -649,16 +649,33 @@ some advantage by doing FUTHARK MAGI, which actually ends up roughly halving the
 execution time compared to the original implementation.
 
 However, when we work with the rewritten core shell parallelepiped, we see huge
-speedups even at n=100. This 
-FUTHARK-MAGI HOISTING OG TING PÅ MAPS
-
-
-
-
-% show core_shell-whatever; and elaborate on loop flattening into maps
-%%% MASSER AF REFERENCER TIL TROELS' PAPERS
+speedups even at n=100. This speedup mainly comes from Futharks ## INDSÆT DET 
+DER FEDE NOGET MED MAPS.
+Looking at the definition of core_shell_parallelepiped_futhark, we see that 11
+parameters are extracted from the local\_values array. We could fear that this
+happens for every application of Iq, but the Futhark compiler actually performs
+HOISTING, which is an optimization that rewrites the program internally, so that
+these variable allocations are moved out of the Iq function, and are thus only
+performed once, instead of n times.
+# KIIIIIIIIIILDE
 
 \subsection{Correctness of Futhark results}
+There has been one small issue with the correctness of the Futhark models.
+As the Futhark models are generic by design, and instantiated with the 
+programmer's floating point type of choice, we can run the Futhark kernels
+with any precision we want.
+
+However, some of the original \sasmodels models have Iq functions that are 
+hardcoded to use double precision floats in places, and even sometimes mixes
+doubles and singles. 
+As these models plays fast and loose with the precision type, the Futhark models
+will inevitably end up showing some total difference between it's results and 
+the results from the built in functions.
+
+However, several \sasview users have assured me, that it is not really a 
+problem. The worst examples of these differences has been accumulated errors of
+between 10e-6 and 10e-7, which is well within the error range accepted by 
+the \sasview users.
 
 \section{Discussion, future work}
 % is this immediately useful? not on single fire runs with low nq
