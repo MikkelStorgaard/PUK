@@ -662,10 +662,10 @@ a candidate model for the Futhark compiler to attempt to optimize.
     \caption{Comparison between OpenCL and Futhark performance for complex model}
   \end{figure}
 
-
-  \begin{mdframed}[
+\begin{mdframed}[
     frametitle={Why does Futhark perform faster than OpenCL?},
     nobreak=true]
+
 While it was expected to see Futhark outperform the strictly CPU based 
 computations performed by Numpy in the Python models, it was more uncertain
 how much (or even whether) Futhark would outperform OpenCL.
@@ -687,6 +687,7 @@ HOISTING, which is an optimization that rewrites the program internally, so that
 these variable allocations are moved out of the Iq function, and are thus only
 performed once, instead of n times.
 # KIIIIIIIIIILDE
+\end{mdframed}
 
 \subsection{Correctness of Futhark results}
 There has been one small issue with the correctness of the Futhark models.
