@@ -9,6 +9,7 @@
 \usepackage{mdframed}
 \usepackage{float}
 \usepackage{amsmath}
+\usepackage{flafter}
 \floatstyle{boxed}
 \restylefloat{figure}
 
@@ -30,7 +31,7 @@
 
 \newcommand{\sasmodels}{\textit{SasModels}}
 \newcommand{\sasview}{\textit{SasView}}
-\newcommand{\iq}{\textit{I(q)}}
+\newcommand{\iq}{\texttt{I(q)}}
 \newcommand{\foriq}{\texttt{for\_iq}}
 \newcommand{\hasiq}{\texttt{has\_iq}}
 \newcommand{\futhark}{\texttt{Futhark for SasModels}}
@@ -70,7 +71,7 @@
 \clearpage
 \section*{Abstract}
 \sasmodels{} performs small angle scattering calculations for the \sasview{}
-modelling suite, by sending it's input to a range of calculation models
+modeling suite, by sending its input to a range of calculation models
 implemented in Python and OpenCL. 
 \\
 A Futhark module was written and added to the 
@@ -90,34 +91,34 @@ leveraged in daily \sasview{} usage.
 \sasview{} is a Small Angle Scattering (SAS) analysis package for the
 analysis of 1D and 2D scattering data directly in inverse space.
 When \sasview{} is given input data, it performs its analyses by running the
-input data through theory models provided by the standalone module
+input data through theoretical models provided by the standalone module
 \sasmodels{}.
 \\\\
-The \sasmodels{} models utilizes a set of kernels, which are implemented
+\sasmodels{} utilizes a set of kernels, which are implemented
 in both Python and OpenCL. However, benchmark
-comparisons\cite{futhark}
+comparisons\cite[sec. 5.3]{array16}
 between the parallel algorithm library \textit{Thrust}
 (implemented in C++/CUDA), and the array programming language Futhark, shows
-that there might severe speed improvements to gain by running these model
-calculations in Futhark, instead of in OpenCL as they are now.
+that there might be severe speed improvements to gain by running these model
+calculations in Futhark, instead of in OpenCL as they are now.\\
 \\\\
-The goal of this project is to explore the potential speed gains obtained by
+The goal of \futhark{} is to explore the potential speed gains obtained by
 rewriting, and testing the resulting speed improvements of, a subset of the
-\sasmodels{} models.
+models in \sasmodels{}.
 The subset will be chosen so that there are for each of Python and OpenCL 
 one ``simple'' model, and a complex one.
 \\\\
 If rewriting the models results in a significant\footnote{I.e. a speed increase
-  in order of at least 100\%}, speedup, it will reasonable to believe that 
-  the rest of the models in \sasmodels{} can be rewritten for a similar
+  in order of at least 100\%} speedup, it will be reasonable to believe that 
+  the rest of the models in \sasmodels{} can be rewritten to obtain a similar
   speedup.
 
-\section{Demonstration}
+\section{Demonstration of the implementation}
 \begin{mdframed}[
   frametitle={Terminology:},
   nobreak=true
   ]
-  The work of this project has been spread out across multiple parts
+  \futhark{} is spread across multiple parts
   of the \sasmodels{} program. Here is a list of the distinct parts of 
   \sasmodels{} that has been worked with:
   \begin{itemize}
@@ -132,7 +133,7 @@ If rewriting the models results in a significant\footnote{I.e. a speed increase
     See figure \ref{fig:dabmodel}
 
     \item Futhark models: A Futhark model is the model module that contains the
-    functions needed to run a given model. See the Futhark line model in fig. 
+    functions needed to run a given model. See the Futhark line model in figure 
     \ref{fig:linemodel-futhark}
     
     \item The Futhark kernel template, as shown in figure \ref{fig:for-iq}:
@@ -154,11 +155,11 @@ If rewriting the models results in a significant\footnote{I.e. a speed increase
 All \sasmodels{} models are described in model info file. These model info 
 files has at least two properties:
 \begin{itemize}
-  \item a function definition \texttt{I(q)}, which defines scattered intensity 
+  \item a function definition \iq{}, which defines scattered intensity 
   of the scattering vector \texttt{q}.
 
   \item a list \texttt{parameters}, of the parameters that are used in 
-  \texttt{I(q)}. If \texttt{I(q)} does not take any parameters besides 
+  \iq{}. If \iq{} does not take any parameters besides 
   \texttt{q}, the list is left empty.
   In the model info file, the parameters are each defined with their unit name, 
   their default values, their value range, their type of parameter and
@@ -170,18 +171,17 @@ the full title, a category, and a mathematical \footnote{a representation
 that compiles to a meaningful mathematical expression if used in a LaTeX math 
 environment} string representation of the scattering function.
 \\\\
-As the scattering function \texttt{I(q)} and its parameters are the only 
+As the scattering function \iq{} and its parameters are the only 
 two things that are strictly necessary in a model definition, the developer
 has the option to leave the model info defined with just these six properties.
 \\\\
-\sasmodels{} has built-in default definitions for $I(q_x,q_y)$ if working
+\sasmodels{} has built-in default definitions for \texttt{I(qx,qy)} if working
 with two-dimensional data, and other functions such as \texttt{form\_volume(q)}
 for working with voluminous scatterings.
 \\\\
 Therefore, it is optional for the developer to define a custom definition
-of $I(q_x, q_y)$ or other default functions.
-An example of this can be seen in fig. \ref{fig:linemodel}.
-A more complex model can be seen in fig. \ref{fig:core_shell}
+of \texttt{I(qx, qy)} or other default functions.
+An example of this can be seen in figure \ref{fig:linemodel}.
 
 \subsection{Defining \iq{} in Python and OpenCL}
 A \sasmodels{} \iq{} function can be written in either Python (which will be
@@ -189,32 +189,31 @@ executed in a Numpy context at runtime), or it can be written in C, which will
 will be inserted into an OpenCL template, so that it can be compiled and 
 executed as a kernel in an OpenCL context, preferably on a GPU.
 \\\\
-A Python \iq{} can be seen in figure \ref{fig:linemodel}, whereas both DAB 
-(figure
-\ref{fig:dabmodel} and core\_shell(figure \ref{fig:core_shell}) are written in C.
+A Python \iq{} can be seen in figure \ref{fig:linemodel}, whereas \iq{} for
+both DAB 
+(figure \ref{fig:dabmodel}) and core\_shell(figure \ref{fig:core_shell})
+are written in C.
 Notice that the main difference between the models lies in the Iq property.
 For Python models, \iq{} is a callable Python function, whilst the C \iq{} is a
- string which is copy-pasted wholesale into aforementioned OpenCL template.
-\\\\
-But with the addition of Futhark models in \sasmodels{} adds a third way of
-using and defining a \sasmodels{} model.
+ string which is copy-pasted wholesale into the aforementioned OpenCL template.
+\\
+With \futhark{}, a third way is introduced for using and defining a \sasmodels{} model.
 
 \subsection{Using a Futhark model}
 \label{sec:using-futhark}
 There is a difference between defining and using a Futhark model.
 The \sasview{} user who wishes to use a Futhark model in his or her work does 
-not need more than the futhark model info file, and a copy of the compiled
-Futhark kernel. In fact, the futhark model info file is identical to OpenCL- 
+not need more than the model info file, and the Futhark kernel.
+A Futhark model info file is identical to OpenCL- 
 and Python model info files, except for in two properties.
 \\\\
 As shown in figure \ref{fig:linemodelinfo-futhark}, \iq{} is now a dictionary
 with the single flag \texttt{model\_is\_futhark} set to \texttt{True},
-and the property \texttt{futhark\_path} points to the location of the compiled
-Futhark kernel.
+and the property \texttt{futhark\_path} points to the location of the Futhark kernel.
 \\\\
-The user does not need to have any Futhark compiler installed if he merely wants
+The user does not need to have the Futhark compiler installed if he merely wants
 to use the Futhark kernel: \futhark{} compiles to portable Python libraries which 
-has numpy and pyopencl as their only dependencies - and as \sasmodels{} has these 
+has Numpy and Pyopencl as their only dependencies - and as \sasmodels{} has these 
 dependencies as well, the user will already have these dependencies sorted out, 
 if he has a working installation of \sasview{} or \sasmodels{}.
 
@@ -222,19 +221,18 @@ if he has a working installation of \sasview{} or \sasmodels{}.
 \label{sec:defining-futhark-model}
 To have a usable Futhark kernel to run in \sasmodels, it is first necessary to
 define it as a Futhark program and compile it using \texttt{futhark-pyopencl}.
-A model \textit{m} itself is defined as a parametric Futhark module\footnote{
+A Futhark model \textit{m} itself is defined as a parametric Futhark module\footnote{
   A more in-depth explanation of the complete definition of a Futhark module is 
-  in \ref{sec:generating-futhark}},
+  in sec \ref{sec:generating-futhark}},
 which contains an Iq-function, an Iqxy- and a form\_volume function.
 It is the model programmers responsibility to fill in all three functions.
 \\\\
-A simple example of a Futhark model is the line module, 
-as depicted in figure \ref{fig:linemodel-futhark}.
-Note that Iqxy is non-default, whilst form\_volume is the default 
-implementation.
+A simple example is the line module, shown in figure \ref{fig:linemodel-futhark}.
+Note that Iqxy is a non-default definition, whilst form\_volume is the default 
+definition.
 
 \subsubsection{On the user friendliness of Futhark models}
-As shown in figure \ref{fig:linemodel-futhark}, there are currently two small 
+As apparent from figure \ref{fig:linemodel-futhark}, there are currently two small 
 nuisances in Futhark models, compared to equivalent models written in
 Python/OpenCL:
 \\
@@ -242,27 +240,28 @@ With both Python and OpenCL models, the programmer can leave out Iqxy and
 form\_volume so that \sasmodels{} automatically fills in the default definition
 for these two functions instead.
 \\\\
-The Futhark programmer does not have this leisure yet, and must define the two
-functions no matter what. This is admittedly a piece of annoying boiler plate,
-but it is also a thing that can be solved by compartmentalising the offending
-functions away in a parametric library module.
+The Futhark programmer does not have this leisure, but must therefore always
+define the two functions. This is boiler plate code, but in the future it could
+be solved by compartmentalising the offending functions away in a
+parametric library module.
 \\\\
-The less removable nuisance is that the programmer must explicitly extract the
+Less fixable is it that the programmer must explicitly extract the
 Iq function parameters from the list \texttt{local\_values}. This must be done
 in the order they appear in the model info parameter list.
+\\
 Iq functions in Python and OpenCL can be defined with any number of function 
-parameters, but in Futhark, we need to adhere to the type declaration of Iq 
-(see \texttt{has\_iq} definition in \ref{fig:for-iq}), which means that Iq can 
+parameters, but Futhark models must adhere to the type declaration of Iq 
+(see \texttt{has\_iq} definition in figure \ref{fig:for-iq}), which means that Iq can 
 take only two arguments; the scattering vector \texttt{q}, and the list 
 \texttt{local\_values} of parameters needed for the scattering.
 \\\\
-This makes for an ugly prelude to the actual body of the Iq function, as shown
-in fig\ref{fig:linemodel-futhark}, or more critically in models like 
-core-shell \ref{fig:core_shell}.
+This leads to long preludes to the actual function body Iq function, as in
+figure \ref{fig:linemodel-futhark} (line model), or more glaringly like in
+figure \ref{fig:core_shell} (core shell model).
 
 \subsection{Generating Futhark models using parametric modules and a header}
 \label{sec:generating-futhark}
-As mentioned in \ref{sec:defining-futhark-model}, the futhark model developer
+As mentioned in sec. \ref{sec:defining-futhark-model}, the Futhark model developer
 does only need to define three functions to be able to compile a working 
 \sasmodels{} Futhark model.
 However, those three functions are merely used by a parametric Futhark module 
@@ -279,8 +278,9 @@ Let's go through the actual implementation of the Futhark models.
   \label{fig:linemodel-futhark-full}
 \end{figure}
 
-There a several things happening in this fig. \ref{fig:linemodel-futhark-full}, 
-besides the definition of the line Iq function.
+Several things are happening in line\_futhark.fut besides (figure
+\ref{fig:linemodel-futhark-full}), besides the definition of the line Iq function.
+\\
 \\
 \texttt{module line} takes either single- or double precision floats as a
 parameter, and then assigns the type alias \texttt{dtype} to the type of the
@@ -299,14 +299,14 @@ in a Futhark kernel.
 Each of the entry points are simply passing on their call parameters to the 
 \texttt{run\_kernel} functions defined in the \texttt{for\_iq} module.
 Everything after the module line definition is boilerplate code, and could
-possibly defined in a less inelegant way in a later revision, but currently, it 
+possibly be defined in a more elegant way in a later revision, but currently, it 
 is a necessary part of every Futhark model.
 \\\\
-Other models, such as core-shell imports libraries so they are 
+Other models, such as core shell, imports libraries which are then
 available in the Iq function.
 
 \subsubsection{header/for\_iq.fut (the Futhark kernel template)}
-\texttt{for\_iq.fut} contains the module type declaration for the \hasiq{} module,
+The file \texttt{for\_iq.fut} contains the module type declaration for the \hasiq{} module,
  and it contains the definition of the parametric \foriq{} module. 
 \\
 The type declaration \hasiq{} ensures, that any model module that is
@@ -314,13 +314,10 @@ used as a parameter for the \foriq{} module defines at least the functions
 Iq, Iqxy and form\_volume, as these functions are necessary for the definition
 of the Futhark kernel.
 \\\\
-Next, we have the actual definition of the module \foriq{}:
-\\
-\foriq{} takes two parameters (a parametric Futhark model), and a real type 
-to instantiate it with.
+Next, we have the actual definition of the module \foriq{}, which takes two parameters (a parametric Futhark model), and a real type to instantiate it with.
 It then instantiates the model with the real type, making the finished Iq module
 \texttt{Iq} available throughout the rest of the kernel.
-\\\\
+\\
 Then finally, it uses the Iq module to define the two functions 
 \texttt{run\_kernel}, and \texttt{run\_kernel\_2d}, which defines the actual 
 \sasmodels{} computation procedure with the scattering functions injected by 
@@ -328,7 +325,9 @@ the Iq module.
 
 \begin{figure}
   \lstinputlisting[]{../sasmodels/sasmodels/models/futharks/header/for_iq.fut}
-  \caption{The Futhark template that is used by the individual models.}
+  \caption{The Futhark template that is used by the individual models. Notice
+    that this template is not copied, but appears only once in the system - it
+    is shared between the Futhark models.}
   \label{fig:for-iq}
 \end{figure}
 
@@ -342,10 +341,10 @@ This happens at runtime in \sasmodels, which means that the kernels aren't
 Futhark models eschews this design and opts instead to separate code generation
 and model usage completely.
 It would be simple to copy the design of the OpenCL kernels, and compile Futhark
-kernels on \sasmodels{} runtime, but this design was cast aside in favour of the
+kernels at \sasmodels{} runtime, but this design was cast aside in favour of the
 design described in sec \ref{sec:generating-futhark}.
 \\
-There are three reasons for that:
+There are three reasons for this decision:
 \begin{enumerate}
   \item Removing code generation from runtime unequivocally decreases the time
   it takes to run a \sasmodels{} calculation. Although time taken by code 
@@ -414,21 +413,21 @@ kernel execution itself.
 Doing this reduces the Futhark overhead during kernel execution by between
 200 and 800 milliseconds.
 \\\\
-Finally, the FutKernel's _form attribute is set. _form is the entry point from
+Finally, the FutKernel's \texttt{\_form} attribute is set. \texttt{\_form} is the entry point from
 the Futhark kernel, as seen in figure \ref{fig:linemodel-futhark-full}.
 
 %% what is form??
 \begin{figure}
   \lstinputlisting[linerange={30-32, 55-56, 74-82, 121-126}, language=Python]{../sasmodels/sasmodels/kernelfut.py}
-  \label{fig:retrieving-futhark-class}
   \caption{Injecting the precompiled Futhark kernel in the FutKernel object}
+  \label{fig:retrieving-futhark-class}
 \end{figure}
 
 
 \begin{figure}
   \lstinputlisting[linerange={128-140}, language=Python]{../sasmodels/sasmodels/kernelfut.py}
-  \label{fig:buffering-kernelfut}
   \caption{Buffering the input data to the Futhark kernel's queue}
+  \label{fig:buffering-kernelfut}
 \end{figure}
 
 Like with \texttt{kernelcl} and \texttt{kernelpy}, FutKernel must also implement
@@ -437,7 +436,7 @@ calculations.
 This has been done by writing a simplified version of the OpenCL kernel's 
 \call{} function. 
 \\\\
-As seen in figure \ref{fig:kernelfut_call} and \ref{fig:kernelcl_call},
+As seen in figure \ref{fig:kernelfut_call} and figure \ref{fig:kernelcl_call},
 the primary task of the call function is to pack an array of arguments, and
 pass them on as arguments for a kernel.
 As \call{} must return a numpy array, the get() function is called at the end
@@ -446,7 +445,7 @@ numpy array.
 \\\\
 Note that kernelfut does not have the evaluation loop that kernelcl has.
 The loop still exists, but has been moved inside of the Futhark template 
-instead (see fig. \ref{fig:for-iq}).
+instead (see figure \ref{fig:for-iq}).
 
 \section{Method}
 \sasmodels{} contains a comparison module called \texttt{compare.py}, which
@@ -466,12 +465,12 @@ been running, compared to the original implementation.
 \\\\
 Furthermore, and ultimately most important, the comparison module also
 revealed the difference in results between the two models. 
-As I have precisely zero knowledge on the field of Small Angle Scatterings, 
+As I have limited knowledge about the field of Small Angle Scatterings, 
 the only option for me regarding correctness of the models has been to take
 the results of the already existing models as the "correct" results of the
 computations. Consequently, any difference between my Futhark results and the
 original results has been direct indicators of faulty implementations or bugs
-somewhere along my work.
+somewhere in my work.
 Therefore, I have been developing and debugging my solution by repeatedly
 comparing it's results to that of the original implementation.
 \\\\
@@ -480,7 +479,7 @@ between the original and the Futhark implementation, as indicators of a
 correct implementation. 
 Test runs with thousands of data points defined as double-precision
 with more than ten decimal points have still resulted in a total difference of
-zero\footnote{see \ref{sec:correctness}} between the models.
+zero\footnote{see sec. \ref{sec:correctness}} between the models.
 \\
 This is what I base my assertion of a correctness on, as even the smallest 
 mistakes along the calculations would surely have resulted in a very significant
@@ -488,8 +487,8 @@ accumulated error in the final results.
 \\\\
 The test driven development has also lead to some of the biggest performance
 optimizations in my design of kernelfut.py.
-In example, the initial tests showed that the Futhark kernels were unreasonably
-much slower than the already existing kernels. After some investigation I found
+In the example, the initial tests showed that the Futhark kernels were unreasonably
+slower than the already existing kernels. After some investigation I found
 that this was because the original implementation buffered the input data in the
 OpenCL context long time before the actual kernel was called in Python, whereas
 the first versions of the Futhark kernel buffered the input data in the OpenCL
@@ -508,7 +507,6 @@ equivalent to one of the most basic high school math functions, $f(x) = ax + b$.
 \begin{figure}
     \begin{tikzpicture}
       \begin{axis}[
-        mbarplot,
         title={1D performance},
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
@@ -529,7 +527,6 @@ equivalent to one of the most basic high school math functions, $f(x) = ax + b$.
     \end{tikzpicture}
     \begin{tikzpicture}
       \begin{axis}[
-        mbarplot,
         title={2D performance},
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
@@ -550,31 +547,31 @@ equivalent to one of the most basic high school math functions, $f(x) = ax + b$.
 
       \end{axis}
     \end{tikzpicture}
-    \label{fig:line-graph}
     \caption{Comparison between Python and Futhark performance for simple model}
+    \label{fig:line-graph}
 \end{figure}
 
 In figure \ref{fig:line-graph} we see that for one dimensional calculations,
 both implementations keep a steady execution time. Futhark is consistently 
-slower, but that can be explained by the overhead of using the Futhark kernels.
+slower, but that can be explained by the overhead of launching the Futhark kernels.
 \\\\
 More interesting is it to look at the execution time of the 2D version of the 
 experiment. For all \sasmodels{} 2D experiments, we are not just calculating \iq
 for each q, but actually $\sum_{q \in Q} \sum_{q \in Q} Iq(q_x, q_y)$.
-So if we have $n$ q, we need to perform $n^2$ calculations.
+So if we have a q vector of $n$ elements, we need to perform $n^2$ calculations.
 \\\\
-We see in the figure, that Futhark at 10000^2 datapoints now greatly outperforms
+We see in the figure, that Futhark at $10000^2$ datapoints now greatly outperforms
 the Python model.
 
 \subsubsection{\texttt{broad\_peak} model}
-Broad Peak is quite a different beast than the line model from before. It's \iq
+\texttt{broad\_peak} is quite different than the line model from before (see
+figure \ref{fig:broadpeakmodel}). Its \iq
 function is defined as 
 $I(q) = \frac{A}{q^n} + \frac{C}{1 + (|q - q_0|\xi)^m} + B$.\footnote{see \url{http://www.sasview.org/docs/user/models/broad_peak.html}}
 
 \begin{figure}
       \begin{tikzpicture}
       \begin{axis}[
-        mbarplot,
         title={1D performance},
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
@@ -596,7 +593,6 @@ $I(q) = \frac{A}{q^n} + \frac{C}{1 + (|q - q_0|\xi)^m} + B$.\footnote{see \url{h
     \end{tikzpicture}
     \begin{tikzpicture}
       \begin{axis}[
-        mbarplot,
         title={2D performance},
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
@@ -617,18 +613,18 @@ $I(q) = \frac{A}{q^n} + \frac{C}{1 + (|q - q_0|\xi)^m} + B$.\footnote{see \url{h
 
       \end{axis}
     \end{tikzpicture}
-    \label{fig:broad-peak-graph}
     \caption{Comparison between Python and Futhark performance for complex model}
+    \label{fig:broad-peak-graph}
 \end{figure}
 
 In figure \ref{fig:line-graph} we see that for one dimensional calculations,
 both implementations keep a steady execution time. Futhark is consistently 
-slower, but that can be explained by the overhead of using the Futhark kernels.
+slower, but, again, that can be explained by the overhead of launching the Futhark kernels.
 \\\\
 More interesting is it to look at the execution time of the 2D version of the 
-experiment. For all \sasmodels{} 2D experiments, we are not just calculating \iq
+experiment. As explained earlier, all \sasmodels{} 2D experiments are not just calculating \iq
 for each q, but actually $\sum_{q \in Q} \sum_{q \in Q} Iq(q_x, q_y)$.
-So if we have $n$ q, we need to perform $n^2$ calculations.
+So if we have $n$ elements in $Q$ , we need to perform $n^2$ calculations.
 \\\\
 We see in the figure, that Futhark at $10000^2$ datapoints now greatly outperforms
 the Python model.
@@ -645,7 +641,7 @@ runs more than 10-20 threads simultaneously.
 \\
 For models like broad\_peak, Futhark gains a significant speedup by 
 hoisting\cite[sec 2.3]{pldi17} the allocation of variables 
-(fig. \ref{fig:broadpeakmodel_futhark}) outside of
+(figure \ref{fig:broadpeakmodel_futhark}) outside of
 the function call, so they are allocated as constants in the \foriq{} 
 \texttt{run\_kernel} function, right before mapping Iq.Iq over the q input.
 \\\\
@@ -658,12 +654,11 @@ $O(\text{number of parameters})$.
 
 \subsection{Futhark vs. OpenCL performance}
 \subsubsection{The \texttt{DAB} model}
-The DAB model is relatively simple, as it is described as $I(q) = \frac{L^3}{1 + (qL)^2}$,
+The \texttt{DAB} model (figure \ref{fig:dabmodel}) is relatively simple, as it is described as $I(q) = \frac{L^3}{1 + (qL)^2}$,
 requiring us to work with just one single variable.
   \begin{figure}
     \begin{tikzpicture}
       \begin{axis}[
-        mbarplot,
         title={1D performance},
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
@@ -686,7 +681,6 @@ requiring us to work with just one single variable.
     \end{tikzpicture}
     \begin{tikzpicture}
       \begin{axis}[
-        mbarplot,
         title={2D performance},
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
@@ -707,20 +701,19 @@ requiring us to work with just one single variable.
 
       \end{axis}
     \end{tikzpicture}
-    \label{fig:dab-graph}
     \caption{Comparison between OpenCL and Futhark performance for simple model}
+    \label{fig:dab-graph}
   \end{figure}
 
 
 \subsubsection{The \texttt{Core Shell Parallelepiped} model}
-The Core Shell Parallelepiped model is by far one of the most complex models
-in \sasmodels' catalogue.
-With it's more than ten parameters and it's two nested loops, it is 
+The \texttt{Core Shell Parallelepiped} model is by far one of the most complex models
+in \sasmodels' catalogue (figure \ref{fig:core_shell}). 
+With its more than ten parameters and its nested loops, it is 
 a candidate model for the Futhark compiler to attempt to optimize.
   \begin{figure}
     \begin{tikzpicture}
       \begin{axis}[
-        mbarplot,
         title={1D performance},
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
@@ -743,7 +736,6 @@ a candidate model for the Futhark compiler to attempt to optimize.
     \end{tikzpicture}
     \begin{tikzpicture}
       \begin{axis}[
-        mbarplot,
         title={2D performance},
         xlabel={number of datapoints},
         ylabel={Time in milliseconds},
@@ -764,8 +756,8 @@ a candidate model for the Futhark compiler to attempt to optimize.
 
       \end{axis}
     \end{tikzpicture}
-    \label{fig:core-shell-graph}
     \caption{Comparison between OpenCL and Futhark performance for complex model}
+    \label{fig:core-shell-graph}
   \end{figure}
 
 \begin{mdframed}[
@@ -813,7 +805,7 @@ As the Futhark models are generic by design, and instantiated with the
 programmer's floating point type of choice, we can run the Futhark kernels
 with any precision we want.
 \\\\
-However, some of the original \sasmodels{} models have Iq functions that are 
+However, some of the original model implementations \sasmodels{} have Iq functions that are 
 hardcoded to use double precision floats in places, and even sometimes mixes
 doubles and singles. 
 As these models plays fast and loose with the precision type, the Futhark models
@@ -826,7 +818,7 @@ between 10e-6 and 10e-7, which is well within the error range accepted by
 the \sasview{} users.
 \section{Discussion, future work}
 \label{sec:discussion}
-The performance tests in \ref{sec:performance} unequivocally shows, that
+The performance tests in sec. \ref{sec:performance} unequivocally shows, that
 there are speedups to gain by running Futhark kernels in favor of Python or
 OpenCL kernels.
 In general, Futhark starts surpassing the performance of competing kernels, when
@@ -837,7 +829,7 @@ However, meetings with external project owner Wojciech Potrzebowski lead to the
 suggestion that simple bundling of \sasview{} experiments would enable us
 to leverage the Futhark speed improvements directly.
 \\\\
-In example, one could imagine running an experiment that continuously sends
+For example, one could imagine running an experiment that continuously sends
 sensor data for processing in \sasview{} / \sasmodels.
 Instead of running an experiment for each sample\footnote{of size n=100-500}
 from the stream, one could let \sasmodels{} bundle these input samples in packages
@@ -848,9 +840,9 @@ apparent on Futhark calculations on samples of larger sizes.
 Please note, that sample sizes might have an upper bound, depending on the
 memory available on the workstations running the experiments.
 
-\subsection{Finding best match in \sasview}
+\subsection{Finding the best match in \sasview}
 \label{sec:best-match}
-In addition to bundling input data, Wojciech also did suggest that the Futhark
+In addition to bundling input data, Wojciech also suggested that the Futhark
 speedups could be used to implement faster best-match-finding for \sasview
 experiments.
 \\\\
@@ -860,8 +852,8 @@ Currently this is not done in an efficient manner.
 Therefore, it would be interesting to implement a way of running multiple models
 on the same data set in parallel.
 And given the current Futhark vs. OpenCL results, the implementation should
-pursued in Futhark, as it has already been shown to be optimal
-(compared to OpenCL).
+be pursued in Futhark, as it has already been shown to be advantageous
+(compared to Open CL).
 
 
 \subsection{Usability of Futhark models}
@@ -869,40 +861,62 @@ It is relevant to discuss how useful Futhark models are to the \sasview{} user
 groups. For the users who merely wants to use the models, it is not necessary
 to understand the implementation itself at all, as the user facing part of
 the model is just the model info file, which is just the same as the model infos
-for Python and OpenCL models \ref{sec:using-futhark}.
+for Python and OpenCL models (see sec. \ref{sec:using-futhark}).
 \\\\
 However, for the model developer, it is now also necessary to have at least a
 rudimentary understanding of functional programming.
-In example, developers will have to learn how to use maps in
-places where they would usually use loops.
+In example, developers will have to learn how to use maps in Futhark in
+places where they would usually use loops in Python and C.
 \\\\
 Furthermore, the current solution requires severe amounts of boilerplate code to
-be included in the futhark model file.
+be included in the Futhark model file.
 This boilerplate is caused by the usage of Futhark's module system, and
-therefore not strictly part of defining i.e. the \iq function of a model.
-The boilerplate might become a distraction for the model developer, so
+therefore not strictly part of defining the \iq function of a model.
+For instance, the boilerplate might become a distraction for the model developer, so
 there might be a smaller educational challenge to solve here as well.
 \\\\
+\subsection{Why should \sasmodels{} developers use Futhark?}
+Currently, large scale data processing can be an unpleasant endeavor in
+\sasmodels{}, as some of the models (especially the Python based ones) have
+got runtimes that makes \sasview{} itself slow and irksome to work with.
+\\
+With Futhark models, the developers are assured that their models are being
+optimized by a compiler automatically - at least as long as they choose to
+follow sound functional programming patterns.\\
+All in all, \futhark{} could simply lead to a faster (and thereby nicer)
+experience for \sasview{} users.
+\\\\
+That Futhark models must be compiled before being available to \sasmodels{} at
+all, also aides the \sasmodels{} developer in designing his models. With the
+exception of out-of-bounds errors stemming from bad indexes into the parameters
+list, the Futhark type checker ensures that mistakes are discovered on compile time,
+instead of having to debug a C function through the stacktraces of by a faulty
+\sasmodels{} OpenCL kernel compilation.
+\\
+
 \section{Conclusion}
-To answer the questions raised in this project definition, it was first
+To answer the questions raised in the project definition, it has been 
 necessary to implement a \sasmodels{} kernel for Futhark models. This was done
 successfully and in a very non-destructive way in the already existing
 \sasmodels{} code base.
 \\\\
 The kernel itself (\texttt{kernelfut.py}) depends on the existing code base, but
-the total change of the original code is two lines: an extra case in the
+the total change of the original code is two lines, which is an extra case in the
 switch statement that decides which kernel type to run for a given model.
 \\\\
-For Futhark model performances increases themselves, the results in
-sec \ref{sec:performance}, tells us that there are performance increase of between
-200- and 2000 percent, depending on the original model's language and
-complexity.
-\\\\
+The \futhark{} tests in sec \ref{sec:performance} shows, that models
+in the \sasmodels{} catalogue can be ported to Futhark, with performance
+increases of between 200 and 2000 percent, depending on the original language
+(and the complexity) of the model.
+\\
 These gains are only realised when the sample size for a given run is high
-enough, but section \ref{sec:discussion} has proposals for \sasmodels{} extensions
+enough, but sec. \ref{sec:discussion} has proposals for \sasmodels{} extensions
 that could help \sasmodels{} users to reach these sample sizes, by bundling
 experiments.
 \\\\
+I believe that \futhark{} should be elaborated upon, because its speedups can
+make it feasible to experiment with model fitting, streaming, and possibly other
+new features, that depends on low runtimes.
 \begin{mdframed}[
   frametitle={Presentation at \sasview{} Code Camp},
   nobreak=true
@@ -917,86 +931,19 @@ The project was well-received by the audience, and there was an eager discussion
 of whether and how it could be possible to really exploit the Futhark
 optimizations.\\\\
 The primary suggestion was to leverage Futhark to find best-fitting models,
-as described in \ref{sec:best-match}, but bundling continuous input from
+as described in sec. \ref{sec:best-match}, but bundling continuous input from
 a sensor to exploit Futhark speed ups at high n was also a feature that many
 of the attendants expressed an interest in.
 \end{mdframed}
 
-
-\section*{Appendices}
-
-\begin{figure}
-  \lstinputlisting[language=Python, firstline=44,lastline=66]{../sasmodels/sasmodels/models/dab.py}
-  \label{fig:dabmodel}
-  \caption{The DAB model}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting[language=Python, firstline=44, lastline=94]{../sasmodels/sasmodels/models/broad_peak.py}
-  \label{fig:broadpeakmodel}
-  \caption{The broad_peak model}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting[firstline=3, lastline=17]{../sasmodels/sasmodels/models/futharks/broad_peak_futhark.fut}
-  \label{fig:broadpeakmodel_futhark}
-  \caption{The broad_peak model in Futhark}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting[language=Python, linerange={27-55,57-68}]{../sasmodels/sasmodels/models/line.py}
-  \label{fig:linemodel}
-  \caption{The line model}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting[firstline=2, lastline=18]{../sasmodels/sasmodels/models/futharks/line_futhark.fut}
-  \label{fig:linemodel-futhark}
-  \caption{The line model written in Futhark}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting[language=Python, firstline=27, lastline=49]{../sasmodels/sasmodels/models/line_futhark.py}
-  \label{fig:linemodelinfo-futhark}
-  \caption{The line model info file designating a Futhark path}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting[language=Python, linerange={131-162}]{../sasmodels/sasmodels/models/core_shell_parallelepiped.py}
-  \lstinputlisting[language=C, linerange={10-81}]{../sasmodels/sasmodels/models/core_shell_parallelepiped.c}
-  \label{fig:core_shell}
-  \caption{The original core\_shell\_parallelepiped model (Iq and form volume)}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting[language=Python, linerange={180-252}]{../sasmodels/sasmodels/kernelpy.py}
-  \label{fig:kernelpy_loop}
-  \caption{The Python kernel calculation loop for \sasmodels}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting[linerange={13-53}]{../sasmodels/sasmodels/models/futharks/header/for_iq.fut}
-  \label{fig:kernelfut_loop}
-  \caption{The Futhark kernel calculation loop, aping fig \ref{fig:kernelpy_loop}}
-\end{figure}
-\begin{figure}
-  \lstinputlisting[linerange={541-588}, language=Python]{../sasmodels/sasmodels/kernelcl.py}
-  \label{fig:kernelcl_call}
-  \caption{Calling OpenCL kernel}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting[linerange={152-192}, language=Python]{../sasmodels/sasmodels/kernelfut.py}
-  \label{fig:kernelfut_call}
-  \caption{Calling FutKernel}
-\end{figure}
-
 \begin{thebibliography}{1}
 
-\bibitem{futhark}
+\bibitem{array16}
   T. Henriksen,
-  \textit{Futhark performances}
-  https://futhark-lang.org/performance.html
+  C. E. Oancea,
+  K. F. Larsen,
+  \textit{Design and GPGPU Performance of Futhark's Redomap Construct},
+  2016
 
 \bibitem{pldi17}
   T. Henriksen,
@@ -1011,4 +958,72 @@ of the attendants expressed an interest in.
   2017.
 
 \end{thebibliography}
+
+\newpage
+\section*{Appendices}
+\begin{figure}
+  \lstinputlisting[language=Python, firstline=44,lastline=66]{../sasmodels/sasmodels/models/dab.py}
+  \caption{The DAB model}
+  \label{fig:dabmodel}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[language=Python, firstline=44, lastline=94]{../sasmodels/sasmodels/models/broad_peak.py}
+  \caption{The broad\_peak model}
+  \label{fig:broadpeakmodel}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[firstline=3, lastline=17]{../sasmodels/sasmodels/models/futharks/broad_peak_futhark.fut}
+  \caption{The broad\_peak model in Futhark}
+  \label{fig:broadpeakmodel_futhark}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[language=Python, linerange={27-55,57-68}]{../sasmodels/sasmodels/models/line.py}
+  \caption{The line model}
+  \label{fig:linemodel}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[firstline=2, lastline=18]{../sasmodels/sasmodels/models/futharks/line_futhark.fut}
+  \caption{The line model written in Futhark}
+  \label{fig:linemodel-futhark}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[language=Python, firstline=27, lastline=49]{../sasmodels/sasmodels/models/line_futhark.py}
+  \caption{The line model info file designating a Futhark path}
+  \label{fig:linemodelinfo-futhark}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[language=Python, linerange={131-162}]{../sasmodels/sasmodels/models/core_shell_parallelepiped.py}
+  \lstinputlisting[language=C, linerange={10-81}]{../sasmodels/sasmodels/models/core_shell_parallelepiped.c}
+  \caption{The original core\_shell\_parallelepiped model (Iq and form volume)}
+  \label{fig:core_shell}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[language=Python, linerange={180-252}]{../sasmodels/sasmodels/kernelpy.py}
+  \caption{The Python kernel calculation loop for \sasmodels}
+  \label{fig:kernelpy_loop}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[linerange={13-53}]{../sasmodels/sasmodels/models/futharks/header/for_iq.fut}
+  \label{fig:kernelfut_loop}
+  \caption{The Futhark kernel calculation loop, aping figure \ref{fig:kernelpy_loop}}
+\end{figure}
+\begin{figure}
+  \lstinputlisting[linerange={541-588}, language=Python]{../sasmodels/sasmodels/kernelcl.py}
+  \caption{Calling OpenCL kernel}
+  \label{fig:kernelcl_call}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[linerange={152-192}, language=Python]{../sasmodels/sasmodels/kernelfut.py}
+  \caption{Calling FutKernel}
+  \label{fig:kernelfut_call}
+\end{figure}
 \end{document}
