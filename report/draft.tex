@@ -67,32 +67,35 @@
 
 \clearpage\maketitle
 \thispagestyle{empty}
-
+\clearpage
 \section*{Abstract}
-This report describes the design and implementation of a Futhark extension for
-the modelling engine \sasmodels.
 \sasmodels{} performs small angle scattering calculations for the \sasview{}
 modelling suite, by sending it's input to a range of calculation models
-implemented in Python and OpenCL.\\\\
-
-%%% whaaaat
-
-
-
+implemented in Python and OpenCL. 
+\\
+A Futhark module was written and added to the 
+existing \sasmodels{} codebase, to test whether Futhark could outperform the 
+already existing model languages used in \sasmodels{}. The Futhark models
+were performance tested against a range of the original models.
+All following results showed a speed increase of between 200 and 2000\%, 
+all without loss of precision.  Speedups were however only apparent at 
+unrealistically large input sizes.
+\\
+Future \sasmodels{} extensions are then suggested, so these speed increases can be 
+leveraged in daily \sasview{} usage.
 
 \newpage
 
 \section{Introduction}
-\subsection{Goal and motivation}
 \sasview{} is a Small Angle Scattering (SAS) analysis package for the
 analysis of 1D and 2D scattering data directly in inverse space.
-As \sasview{} is given data, it performs its analyses by running the
+When \sasview{} is given input data, it performs its analyses by running the
 input data through theory models provided by the standalone module
 \sasmodels{}.
 \\\\
 The \sasmodels{} models utilizes a set of kernels, which are implemented
 in both Python and OpenCL. However, benchmark
-comparisons\footnote{https://futhark-lang.org/performance.html}
+comparisons\cite{futhark}
 between the parallel algorithm library \textit{Thrust}
 (implemented in C++/CUDA), and the array programming language Futhark, shows
 that there might severe speed improvements to gain by running these model
@@ -101,26 +104,27 @@ calculations in Futhark, instead of in OpenCL as they are now.
 The goal of this project is to explore the potential speed gains obtained by
 rewriting, and testing the resulting speed improvements of, a subset of the
 \sasmodels{} models.
-The subset will be chosen so that there are at least
-one ``simple'' model, one model of intermediate complexity, and one complex
-model in it.
+The subset will be chosen so that there are for each of Python and OpenCL 
+one ``simple'' model, and a complex one.
 \\\\
 If rewriting the models results in a significant\footnote{I.e. a speed increase
-  in order of at least a magnitude}, speedup, it will reasonable to believe that 
+  in order of at least 100\%}, speedup, it will reasonable to believe that 
   the rest of the models in \sasmodels{} can be rewritten for a similar
   speedup.
 
 \section{Demonstration}
-\begin{mdframed}[frametitle={Terminology:}]
+\begin{mdframed}[
+  frametitle={Terminology:},
+  nobreak=true
+  ]
   The work of this project has been spread out across multiple parts
-  of the \sasmodels{} program. Here is a list of the distinct parts of \sasmodels
-  that has been worked with:
+  of the \sasmodels{} program. Here is a list of the distinct parts of 
+  \sasmodels{} that has been worked with:
   \begin{itemize}
     \item \texttt{kernelfut}: The \sasmodels{} Futhark kernel module that wraps 
     \sasmodels{} input data and sends it to be calculated in the actual Futhark 
     kernel. \texttt{kernelfut} is an alternative to \texttt{kernelpy} and
     \texttt{kernelcl} which are already available in \sasmodels.
-    The final kernel object is FutKernel.
 
     \item Model info files: Every model in \sasmodels{} is defined in a Python 
     model info file, which defines all the model's properties, like the model's
@@ -147,7 +151,8 @@ If rewriting the models results in a significant\footnote{I.e. a speed increase
   
 \end{mdframed}
 
-\subsection{Describing \sasmodels' models}
+All \sasmodels{} models are described in model info file. These model info 
+files has at least two properties:
 \begin{itemize}
   \item a function definition \texttt{I(q)}, which defines scattered intensity 
   of the scattering vector \texttt{q}.
@@ -175,8 +180,8 @@ for working with voluminous scatterings.
 \\\\
 Therefore, it is optional for the developer to define a custom definition
 of $I(q_x, q_y)$ or other default functions.
-An example of this can be seen in figure \ref{fig:linemodel}.
-A more complex model can be seen in appendix \ref{fig:core_shell}
+An example of this can be seen in fig. \ref{fig:linemodel}.
+A more complex model can be seen in fig. \ref{fig:core_shell}
 
 \subsection{Defining \iq{} in Python and OpenCL}
 A \sasmodels{} \iq{} function can be written in either Python (which will be
@@ -639,7 +644,7 @@ simultaneously on the GPU. In comparison, Numpy runs on the CPU, which rarely
 runs more than 10-20 threads simultaneously.
 \\
 For models like broad\_peak, Futhark gains a significant speedup by 
-hoisting\cite[sec 2.3]{fhpc17} the allocation of variables 
+hoisting\cite[sec 2.3]{pldi17} the allocation of variables 
 (fig. \ref{fig:broadpeakmodel_futhark}) outside of
 the function call, so they are allocated as constants in the \foriq{} 
 \texttt{run\_kernel} function, right before mapping Iq.Iq over the q input.
@@ -786,10 +791,15 @@ over the array of q values, and the Iq function body is mainly a nested
 map-map-reduce-reduce, which makes the final nested function a 
 map-map-map-reduce-reduce. 
 \\
-As this construct can be flattened 
-and parallelised\cite[sec. 5]{pldi17}, the Futhark compiler ensures that the
-calculations within the maps over the Gauss arrays and q values are coalesced,
-we are guaranteed efficient memory access.
+As this construct can be flattened and parallelised\cite[sec. 5]{pldi17}, 
+we are can split our workload into many more tasks than the original OpenCL 
+implementation, which only has nq tasks. However, every single of these tasks
+consists of complex for-loop nests, and plenty of variable assignments.
+\\\\
+Furthermore, the Futhark compiler takes care to ensure that the calculations 
+over the Gauss arrays and q values are coalesced, so we are given 
+efficient memory access.
+\\
 For the original OpenCL implementation, we risk that different kernels are
 accessing memory locations that are physically far apart, so that the GPU
 has to handle the memory accesses individually, instead of being able to 
@@ -816,7 +826,7 @@ between 10e-6 and 10e-7, which is well within the error range accepted by
 the \sasview{} users.
 \section{Discussion, future work}
 \label{sec:discussion}
-The performance tests in \ref{performance} unequivocally shows, that
+The performance tests in \ref{sec:performance} unequivocally shows, that
 there are speedups to gain by running Futhark kernels in favor of Python or
 OpenCL kernels.
 In general, Futhark starts surpassing the performance of competing kernels, when
@@ -884,7 +894,7 @@ the total change of the original code is two lines: an extra case in the
 switch statement that decides which kernel type to run for a given model.
 \\\\
 For Futhark model performances increases themselves, the results in
-sec \ref{performance}, tells us that there are performance increase of between
+sec \ref{sec:performance}, tells us that there are performance increase of between
 200- and 2000 percent, depending on the original model's language and
 complexity.
 \\\\
@@ -911,7 +921,6 @@ as described in \ref{sec:best-match}, but bundling continuous input from
 a sensor to exploit Futhark speed ups at high n was also a feature that many
 of the attendants expressed an interest in.
 \end{mdframed}
-
 
 
 \section*{Appendices}
@@ -970,7 +979,6 @@ of the attendants expressed an interest in.
   \label{fig:kernelfut_loop}
   \caption{The Futhark kernel calculation loop, aping fig \ref{fig:kernelpy_loop}}
 \end{figure}
-
 \begin{figure}
   \lstinputlisting[linerange={541-588}, language=Python]{../sasmodels/sasmodels/kernelcl.py}
   \label{fig:kernelcl_call}
@@ -983,4 +991,24 @@ of the attendants expressed an interest in.
   \caption{Calling FutKernel}
 \end{figure}
 
+\begin{thebibliography}{1}
+
+\bibitem{futhark}
+  T. Henriksen,
+  \textit{Futhark performances}
+  https://futhark-lang.org/performance.html
+
+\bibitem{pldi17}
+  T. Henriksen,
+  N. G. W. Serup,
+  M. Elsman,
+  F. Henglein,
+  C. E. Oancea,
+  \textit{Futhark: Purely Functional GPU-Programming with Nested Parallelism 
+  and In-Place Array Updates}
+  Department of Computer Science,
+  University of Copenhagen (Denmark),
+  2017.
+
+\end{thebibliography}
 \end{document}
