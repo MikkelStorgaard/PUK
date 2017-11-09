@@ -108,22 +108,44 @@ If rewriting the models results in a significant\footnote{I.e. a speed increase
   the rest of the models in \sasmodels can be rewritten for a similar
   speedup.
 
-\section{Demonstration of use of finished project}
-As \sasmodels is rarely used on its own, but rather as the backbone of 
-\sasview's calculation backend, I am not going to write much about 
-\sasview usage.
-Instead, I will describe how Futhark models in \sasmodels are leveraged 
-by \sasmodels' users.
-måske ikke så meget mere her
-% mere
+\section{Demonstration}
+\begin{mdframed}[frametitle={Terminology:}]
+  The work of this project has been spread out across multiple parts
+  of the \sasmodels program. Here is a list of the distinct parts of \sasmodels
+  that has been worked with:
+  \begin{itemize}
+    \item \texttt{kernelfut}: The \sasmodels Futhark kernel module that wraps 
+    \sasmodels input data and sends it to be calculated in the actual Futhark 
+    kernel. \texttt{kernelfut} is an alternative to \texttt{kernelpy} and
+    \texttt{kernelcl} which are already available in \sasmodels.
 
+    \item Model info files: Every model in \sasmodels is defined in a Python 
+    model info file, which defines all the model's properties, like the model's
+    function itself, and a list of the parameters needed to run the model.
+    See figure \ref{fig:dabmodel}
+
+    \item Futhark models: A Futhark model is the model module that contains the
+    functions needed to run a given model. See the Futhark line model in fig. 
+    \ref{fig:fig:linemodel-futhark}
+    
+    \item The Futhark kernel template, as shown in figure \ref{fig:for-iq}:
+    The Futhark kernel template contains the module that takes a Futhark
+    model as input, and returns a Futhark kernel that can be called by 
+    \texttt{kernelfut}.
+    
+    \item Futhark kernels: The Python OpenCL library that is produced by 
+    compiling the Futhark kernel template with a Futhark model.
+
+    \item \sasmodels experiments: A \sasmodels experiment is the action of 
+    running \sasmodels with some input data and one or more models, to get 
+    the resulting output data. The output data is the selected models applied
+    to the input data.
+  \end{itemize}
+  
+\end{mdframed}
 
 \subsection{Describing \sasmodels' models}
-A \sasmodels model info file (hereafter referred to as just a model info) is a 
-Python file, that defines at least two primary properties of a 
-calculation model \textit{m}:
 \begin{itemize}
-
   \item a function definition \texttt{I(q)}, which defines scattered intensity 
   of the scattering vector \texttt{q}.
 
@@ -153,11 +175,6 @@ of $I(q_x, q_y)$ or other default functions.
 An example of this can be seen in figure \ref{fig:linemodel}.
 A more complex model can be seen in appendix \ref{fig:core_shell}
 
-\begin{figure}
-  % fuld beskrivelse af ax+b-figur, med parametre a, b, og en Iqxy
-  \caption{model info file for modelling a line}\label{fig:linemodel}
-\end{figure}
-
 \subsection{Defining \iq in Python and OpenCL}
 A \sasmodels \iq function can be written in either Python (which will be
 executed in a Numpy context at runtime), or it can be written in C, which will
@@ -180,17 +197,16 @@ The \sasview user who wishes to use a Futhark model in his or her work does
 not need more than the futhark model info file, and a copy of the compiled
 Futhark kernel. In fact, the futhark model info file is identical to OpenCL- 
 and Python model info files, except for in two properties.
-As show in figure \ref{fig:futhark_dab}, there has been added a flag 
-%CHECK THISSS!!!
-\texttt{model\_is\_futhark: true}, and \iq is now a path to a precompiled 
+As show in figure \ref{fig:linemodelinfo-futhark}, \iq is now a dictionary
+with the single flag \texttt{model\_is\_futhark} set to \texttt{True},
+and the property \texttt{futhark\_path} points to the location of the compiled
 Futhark kernel.
 
 The user does not need to have any Futhark compiler installed if he merely wants
-to use the precompiled Futhark module: Futhark models for \sasmodels compiles to
-portable Python libraries which has numpy and pyopencl as their only 
-dependencies - and as \sasmodels has these dependencies as well, the user will
-already have these dependencies sorted out, if he has a working installation of 
-\sasview or \sasmodels.
+to use the Futhark kernel: \futhark compiles to portable Python libraries which 
+has numpy and pyopencl as their only dependencies - and as \sasmodels has these 
+dependencies as well, the user will already have these dependencies sorted out, 
+if he has a working installation of \sasview or \sasmodels.
 
 \subsection{Defining a Futhark model}
 \label{sec:defining-futhark-model}
@@ -279,10 +295,8 @@ Everything after the module line definition is boilerplate code, and could
 possibly defined in a less inelegant way in a later revision, but currently, it 
 is a necessary part of every Futhark model.
 
-Other models, such as core-shell %FIX\
-imports libraries so they are available in the Iq function.
-%% som vist i core shell, kan det også være nødvendigt at definere og importere 
-% ekstra biblioteker
+Other models, such as core-shell imports libraries so they are 
+available in the Iq function.
 
 \subsubsection{header/for\_iq.fut (the Futhark kernel template)}
 \texttt{for\_iq.fut} contains the module type declaration for the \hasiq module,
@@ -344,11 +358,41 @@ There are three reasons for that:
   workstations.
 \end{enumerate}
 
-\section{Implementation of \texttt{kernelfut.py}}
-\sasmodels 
+\section{Adding \texttt{kernelfut} to \sasmodels}
+The following process happens when running a \sasmodels{} experiment through the
+built-in comparison module:
+\begin{enumerate}
+  \item The experiment parameters\footnote{choice(s) of model, number of 
+  evaluations, sample size, number type and so on} for the experiment are used
+  to create a ParameterTable.
+  
+  \item The ParameterTable is used to load (or generate) a set of input data for
+   the kernel.
 
-% current architecture of Sasmodels engine
-% description of kernelcl kernels
+  \item The ParameterTable is used to initialize a \sasmodels kernel using the
+  desired model. In case of OpenCL and Futhark kernels, the input data is 
+  buffered to the OpenCL context already at this point. This is done to leave
+  as much buffering out of the time measurements of \sasmodels as possible.
+  
+  \item \sasmodels packs the model and the data in a DirectModel wrapper object.
+
+  \item The DirectModel is run the desired number of times in \sasmodels,
+  and finally returns the model output, the average running time, and the
+  output difference between the models that have been compared. 
+\end{enumerate}
+
+To design \texttt{kernelfut}, it was first necessary to ape the 
+\sasmodels calculation loop as a Futhark function. 
+I chose to replicate \texttt{kernelpy}'s \texttt{\_loops(...)} function in 
+Futhark, as it is fairly simple to rewrite the Python code in Futhark.
+\texttt{\_loops()} is shown in figure \ref{fig:kernelpy_loop}, and the
+comparable Futhark function in figure \ref{fig:kernelfut_loop}.
+
+Second, it was necessary to implement a bridge between \sasmodels and the 
+precompiled Futhark kernels. 
+When a \sasmodels experiment wants to use a Futhark kernel for it's calculation, it must dynamically import the kernel
+% gør når jeg kan koncentrere mig
+
 % (smaller) description of kernelcl kernels
 % description of current kernelfut implementation
 
@@ -806,11 +850,6 @@ of the attendants expressed an interest in.
 
 
 
-% nævn at projektet er blevet præsenteret for en faktisk brugergruppe,
-% og fik god og konstruktiv feedback
-% det inspirerede til yderligere projekter/forbedringer indenfor sasmodels
-
-
 \section*{Appendices}
 
 \begin{figure}
@@ -848,6 +887,18 @@ of the attendants expressed an interest in.
   \lstinputlisting[language=C, linerange={10-81}]{../sasmodels/sasmodels/models/core_shell_parallelepiped.c}
   \label{fig:core_shell}
   \caption{The original core\_shell\_parallelepiped model (Iq and form volume)}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[language=Python, linerange={180-252}]{../sasmodels/sasmodels/kernelpy.py}
+  \label{fig:kernelpy_loop}
+  \caption{The Python kernel calculation loop for \sasmodels}
+\end{figure}
+
+\begin{figure}
+  \lstinputlisting[linerange={13-53}]{../sasmodels/sasmodels/models/futharks/header/for_iq.fut}
+  \label{fig:kernelfut_loop}
+  \caption{The Futhark kernel calculation loop, aping fig \ref{fig:kernelpy_loop}}
 \end{figure}
 
 \end{document}
